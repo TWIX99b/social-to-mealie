@@ -15,7 +15,7 @@
 > Statt OpenAI schreibt hier **Claude (Anthropic-API)** die Rezepte, jeder Link läuft als **Hintergrund-Job**, und die Oberfläche ist komplett neu.
 > Image: `ghcr.io/twix99b/social-to-mealie:latest`
 
-![Live-Ansicht, während Claude das Rezept schreibt](docs/screenshots/live-desktop.webp)
+![Live-Ansicht, während Claude das Rezept schreibt](docs/screenshots/de/live-desktop.webp)
 
 ## Was die App macht
 
@@ -26,20 +26,21 @@ Link einfügen oder vom Handy teilen. Die App lädt Video und Bilder, transkribi
 - **Erst prüfen, dann speichern** – alles ist bearbeitbar, Titelbild aus den Bildern des Posts wählen oder Claude mit einem Hinweis neu schreiben lassen (mit dem größeren Modell)
 - **Passt zu deinem Mealie** – Zutaten getrennt nach Menge / Einheit / Lebensmittel / Notiz und mit vorhandenen Lebensmitteln und Einheiten abgeglichen; Tags und Kategorien nur aus den vorhandenen
 - **Duplikat-Prüfung** – ein Link, der schon in Mealie ist, wird erkannt, bevor Claude gefragt wird (kostet nichts)
-- **Hausregeln** – Deutsch, metrisch, EL/TL, Ofenart, eigene Hinweise und Modellwahl, auf dem Server gespeichert und für alle gleich
+- **Hausregeln** – Rezeptsprache, immer übersetzen, metrisch, EL/TL, Ofenart, eigene Hinweise und Modellwahl, auf dem Server gespeichert und für alle gleich
 - **Teilen vom Handy** – iPhone-Kurzbefehl über die API, Android über die installierbare Web-App (Teilen-Menü)
 - **Vier Themen** (Küche, Homelab, Kräuter, Nacht), jeweils Hell / Dunkel / Automatisch, pro Gerät gespeichert
+- **Deutsch und Englisch** – Sprache der Oberfläche pro Gerät, Rezeptsprache (auch für Meldungen) als Server-Einstellung
 - Der Verlauf bleibt 10 Tage, Entwürfe bleiben, bis du sie erledigst
 
 ## Screenshots
 
 | Entwurf prüfen | Entwürfe |
 | --- | --- |
-| ![Prüfen](docs/screenshots/review-desktop.webp) | ![Entwürfe](docs/screenshots/drafts-desktop.webp) |
+| ![Prüfen](docs/screenshots/de/review-desktop.webp) | ![Entwürfe](docs/screenshots/de/drafts-desktop.webp) |
 | **Verlauf** | **Einstellungen** |
-| ![Verlauf](docs/screenshots/history-desktop.webp) | ![Einstellungen](docs/screenshots/settings-desktop.webp) |
+| ![Verlauf](docs/screenshots/de/history-desktop.webp) | ![Einstellungen](docs/screenshots/de/settings-desktop.webp) |
 
-<p align="center"><img src="docs/screenshots/mobile.webp" alt="Handy: Live-Ansicht, Prüfen und Entwürfe" width="860" /></p>
+<p align="center"><img src="docs/screenshots/de/mobile.webp" alt="Handy: Live-Ansicht, Prüfen und Entwürfe" width="860" /></p>
 
 <sub>Die Screenshots zeigen Beispieldaten.</sub>
 
@@ -106,6 +107,7 @@ Der erste Link mit Ton dauert ein paar Minuten länger, weil das Whisper-Modell 
 | `LOCAL_TRANSCRIPTION_MODEL` | empfohlen | – | Whisper-Modell (ONNX) von Hugging Face, z. B. `Xenova/whisper-small` oder `Xenova/whisper-base` |
 | `CLAUDE_MODEL_FAST` | nein | `claude-haiku-5-5` | Modell für den ersten Entwurf (Einstellung „Automatisch“ / „Haiku“) |
 | `CLAUDE_MODEL_SMART` | nein | `claude-sonnet-5-5` | Modell für „Neu schreiben“ (Einstellung „Automatisch“ / „Sonnet“) |
+| `APP_LANGUAGE` | nein | `en` | Rezeptsprache bei einer frischen Installation (`en` oder `de`); später in den Einstellungen änderbar |
 | `ANTHROPIC_URL` | nein | `https://api.anthropic.com` | Anderer Endpunkt / Proxy |
 | `GOTIFY_URL`, `GOTIFY_TOKEN` | nein | – | Push-Meldungen für „bereit zum Prüfen“, gespeichert und Fehler |
 | `APP_URL` | nein | – | Öffentliche Adresse dieser App; Meldungen verlinken direkt auf den Entwurf |

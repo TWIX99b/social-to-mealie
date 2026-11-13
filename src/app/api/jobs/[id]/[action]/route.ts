@@ -1,4 +1,4 @@
-import { getJob } from "@/lib/stm/store";
+import { getJob, st } from "@/lib/stm/store";
 import type { DraftRecipe } from "@/lib/stm/types";
 import { friendlyMealieError, requeue, saveJob } from "@/lib/stm/worker";
 
@@ -40,21 +40,21 @@ function cleanRecipe(input: any): DraftRecipe {
 export async function POST(req: Request, { params }: Ctx) {
     const { id, action } = await params;
     const job = getJob(id);
-    if (!job || job.status === "discarded") return Response.json({ error: "Nicht gefunden" }, { status: 404 });
+    if (!job || job.status === "discarded") return Response.json({ error: st("srv.notFound") }, { status: 404 });
     const body = await req.json().catch(() => ({}));
 
     switch (action) {
         case "save": {
             if (!["draft", "failed"].includes(job.status)) {
-                return Response.json({ error: "Nur Entwürfe können gespeichert werden" }, { status: 409 });
+                return Response.json({ error: st("srv.onlyDrafts") }, { status: 409 });
             }
             const recipe = cleanRecipe(body.recipe ?? job.recipe);
-            if (!recipe.name) return Response.json({ error: "Titel fehlt" }, { status: 400 });
+            if (!recipe.name) return Response.json({ error: st("srv.noTitle") }, { status: 400 });
             try {
                 const saved = await saveJob(id, recipe, Number(body.imageIndex) || 0);
                 return Response.json({ job: saved });
             } catch (e: any) {
-                return Response.json({ error: `Speichern in Mealie fehlgeschlagen: ${friendlyMealieError(e)}` }, { status: 502 });
+                return Response.json({ error: st("srv.saveFailed", { msg: friendlyMealieError(e) }) }, { status: 502 });
             }
         }
         case "retry":
@@ -69,6 +69,6 @@ export async function POST(req: Request, { params }: Ctx) {
             });
         }
         default:
-            return Response.json({ error: "Unbekannte Aktion" }, { status: 400 });
+            return Response.json({ error: st("srv.unknownAction") }, { status: 400 });
     }
 }

@@ -263,3 +263,6 @@ button.stm-tag { cursor: pointer; min-height: 32px; }
 .stm textarea.stm-input { field-sizing: content; }
 .stm-code { display: block; margin: 4px 0; padding: 6px 10px; border-radius: 10px; background: var(--soft); border: 1px solid var(--line); font-size: 13px; overflow-wrap: anywhere; }
 .stm code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.stm textarea.stm-input[rows="2"] { min-height: calc(2 * 1.45em + 22px); }
+.stm textarea.stm-input[rows="3"] { min-height: calc(3 * 1.45em + 22px); }
+.stm textarea.stm-input[rows="4"] { min-height: calc(4 * 1.45em + 22px); }

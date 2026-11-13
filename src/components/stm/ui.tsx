@@ -1,6 +1,8 @@
 'use client';
 
+import { type Lang, type MsgKey, formatNumber } from '@/lib/stm/i18n';
 import type { DraftRecipe, Ingredient, Job, JobStatus } from '@/lib/stm/types';
+import type { T } from './i18n';
 
 /* ---------- icons (stroke SVG, decorative) ---------- */
 
@@ -81,38 +83,39 @@ export function IconTrash() {
 
 /* ---------- helpers ---------- */
 
-export function secs(ms?: number) {
+export function secs(lang: Lang, ms?: number) {
     if (ms === undefined || ms === null) return '';
-    return `${(ms / 1000).toFixed(1).replace('.', ',')} s`;
+    return `${formatNumber(lang, ms / 1000, 1)} s`;
 }
 
-export function relTime(iso: string) {
+export function relTime(t: T, iso: string) {
     const diff = Date.now() - new Date(iso).getTime();
     const min = Math.round(diff / 60000);
-    if (min < 1) return 'gerade eben';
-    if (min < 60) return `vor ${min} Min.`;
+    if (min < 1) return t('time.justNow');
+    if (min < 60) return t('time.min', { n: min });
     const h = Math.round(min / 60);
-    if (h < 24) return `vor ${h} Std.`;
+    if (h < 24) return t('time.hours', { n: h });
     const d = Math.round(h / 24);
-    return d === 1 ? 'gestern' : `vor ${d} Tagen`;
+    return d === 1 ? t('time.yesterday') : t('time.days', { n: d });
 }
 
-export function dateTime(iso: string) {
+export function dateTime(lang: Lang, iso: string) {
     const d = new Date(iso);
-    return `${d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}, ${d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
+    const loc = lang === 'de' ? 'de-DE' : 'en-GB';
+    return `${d.toLocaleDateString(loc, { day: '2-digit', month: '2-digit' })}, ${d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' })}`;
 }
 
 export function daysOld(iso: string) {
     return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
 }
 
-export function sourceLabel(job: Job) {
-    const src = job.source === 'shortcut' ? 'iPhone-Kurzbefehl' : job.source === 'share' ? 'Teilen' : 'App';
-    return `${job.platform || 'Link'} · ${src}`;
+export function sourceLabel(t: T, job: Job) {
+    const src = job.source === 'shortcut' ? t('source.shortcut') : job.source === 'share' ? t('source.share') : t('source.ui');
+    return `${job.platform || t('source.link')} · ${src}`;
 }
 
-export function qtyText(i: Ingredient) {
-    const q = i.quantity === null || i.quantity === undefined || i.quantity === 0 ? '' : String(Math.round(i.quantity * 1000) / 1000).replace('.', ',');
+export function qtyText(lang: Lang, i: Ingredient) {
+    const q = i.quantity === null || i.quantity === undefined || i.quantity === 0 ? '' : formatNumber(lang, i.quantity);
     return [q, i.unit || ''].filter(Boolean).join(' ');
 }
 
@@ -120,17 +123,8 @@ export function imageUrl(job: Job, n: number) {
     return `/api/jobs/${job.id}/image/${n}?v=${encodeURIComponent(job.updatedAt.slice(0, 16))}`;
 }
 
-export const STATUS_TEXT: Record<JobStatus, string> = {
-    queued: 'Wartet',
-    downloading: 'Lädt Video …',
-    transcribing: 'Transkribiert …',
-    writing: 'Claude schreibt …',
-    draft: 'Bereit zum Prüfen',
-    saving: 'Speichert …',
-    saved: 'In Mealie gespeichert',
-    failed: 'Fehler',
-    duplicate: 'Schon vorhanden',
-    discarded: 'Verworfen',
-};
+export function statusText(t: T, status: JobStatus) {
+    return t(`status.${status}` as MsgKey);
+}
 
 export type PartialRecipe = Partial<DraftRecipe>;

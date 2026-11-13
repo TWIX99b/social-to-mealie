@@ -7,7 +7,7 @@ import { downloadMediaWithYtDlp } from "@/lib/yt-dlp";
 import { writeRecipeWithClaude } from "./claude";
 import { findDuplicate, getCategories, getTags, getUnits, matchIngredients, saveRecipe } from "./mealie-api";
 import { notify } from "./notify";
-import { addJob, emit, getJob, getSettings, imagePath, listJobs, removeImages, stm, updateJob } from "./store";
+import { addJob, emit, getJob, getSettings, imagePath, listJobs, removeImages, st, stm, updateJob } from "./store";
 import type { DraftRecipe, Job } from "./types";
 
 export function detectPlatform(url: string): string {
@@ -114,15 +114,15 @@ async function storeImage(id: string, n: number, source: string): Promise<boolea
 
 function friendlyDownloadError(job: Job): string {
     if (job.platform === "Instagram" || job.platform === "Facebook") {
-        return `${job.platform} hat den Post nicht herausgegeben – meist fehlen Cookies oder sie sind abgelaufen (cookies.txt). Ist der Post privat oder gelöscht?`;
+        return st("srv.dlCookies", { platform: job.platform });
     }
-    return "Video bzw. Post konnte nicht geladen werden – ist der Link öffentlich und wird die Plattform unterstützt?";
+    return st("srv.dlGeneric");
 }
 
 export function friendlyMealieError(e: any): string {
     const msg = String(e?.message || e);
-    if (/→ 40[13]/.test(msg)) return "Mealie lehnt den API-Token ab – MEALIE_API_KEY prüfen (Profil → API-Tokens).";
-    if (/fetch failed|ECONNREFUSED|ENOTFOUND|timeout/i.test(msg)) return "Mealie ist nicht erreichbar – MEALIE_URL prüfen.";
+    if (/→ 40[13]/.test(msg)) return st("srv.mealieToken");
+    if (/fetch failed|ECONNREFUSED|ENOTFOUND|timeout/i.test(msg)) return st("srv.mealieDown");
     return msg;
 }
 
@@ -147,7 +147,7 @@ async function processJob(id: string) {
                 const dup = await findDuplicate(job.url);
                 if (dup) {
                     updateJob(id, { status: "duplicate", duplicateOf: dup });
-                    await notify("Schon in Mealie", `${dup.name} gibt es bereits.`, `/?tab=verlauf`);
+                    await notify(st("push.duplicateTitle"), st("push.duplicateText", { name: dup.name }), `/?tab=verlauf`);
                     return;
                 }
             }
@@ -231,31 +231,31 @@ async function processJob(id: string) {
         if (job.direct) {
             try {
                 const saved = await saveJob(id, recipe, 0);
-                await notify("Rezept gespeichert", `${recipe.name} ist in Mealie.`, saved?.mealieUrl || "/?tab=verlauf");
+                await notify(st("push.savedTitle"), st("push.savedText", { name: recipe.name }), saved?.mealieUrl || "/?tab=verlauf");
             } catch (e: any) {
-                await notify("Speichern fehlgeschlagen", `${recipe.name}: ${friendlyMealieError(e)}`, `/?draft=${id}`);
+                await notify(st("push.saveFailedTitle"), `${recipe.name}: ${friendlyMealieError(e)}`, `/?draft=${id}`);
             }
         } else {
             updateJob(id, { status: "draft" });
-            await notify("Rezept bereit zum Prüfen", recipe.name || "Neuer Entwurf", `/?draft=${id}`);
+            await notify(st("push.readyTitle"), recipe.name || st("push.newDraft"), `/?draft=${id}`);
         }
     } catch (e: any) {
         console.error("Job failed", id, e);
         const raw = String(e?.message || "");
         const message =
             e?.name === "TimeoutError" || e?.name === "AbortError"
-                ? "Zeitüberschreitung – bitte nochmal versuchen."
+                ? st("srv.timeout")
                 : raw.startsWith("Mealie")
                   ? friendlyMealieError(e)
-                  : raw || "Unbekannter Fehler";
+                  : raw || st("srv.unknown");
         updateJob(id, { status: "failed", error: message });
-        await notify("Rezept fehlgeschlagen", message, "/?tab=verlauf");
+        await notify(st("push.failedTitle"), message, "/?tab=verlauf");
     }
 }
 
 export async function saveJob(id: string, recipe: DraftRecipe, imageIndex: number) {
     const job = getJob(id);
-    if (!job) throw new Error("Auftrag nicht gefunden");
+    if (!job) throw new Error(st("srv.jobMissing"));
     const t0 = Date.now();
     updateJob(id, { status: "saving", recipe, error: undefined, stageStartedAt: new Date().toISOString() });
     try {
@@ -269,7 +269,7 @@ export async function saveJob(id: string, recipe: DraftRecipe, imageIndex: numbe
             timings: { ...job.timings, save: Date.now() - t0 },
         });
     } catch (e: any) {
-        updateJob(id, { status: "draft", error: `Speichern in Mealie fehlgeschlagen: ${friendlyMealieError(e)}` });
+        updateJob(id, { status: "draft", error: st("srv.saveFailed", { msg: friendlyMealieError(e) }) });
         throw e;
     }
 }

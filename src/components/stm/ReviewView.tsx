@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { DraftRecipe, Ingredient, Job } from '@/lib/stm/types';
+import { useT } from './i18n';
 import { IconPlus, IconSpin, IconTrash, IconX, daysOld, imageUrl, sourceLabel } from './ui';
 
 type Meta = { tags: string[]; categories: string[] };
@@ -38,6 +39,7 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
     const [busy, setBusy] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [notFound, setNotFound] = useState(false);
+    const t = useT();
 
     useEffect(() => {
         fetch('/api/meta')
@@ -71,9 +73,9 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
     if (notFound) {
         return (
             <section className='stm-empty stm-glass'>
-                <p>Dieser Entwurf existiert nicht mehr.</p>
+                <p>{t('review.gone')}</p>
                 <button type='button' className='stm-btn' onClick={onClose}>
-                    Zurück
+                    {t('common.back')}
                 </button>
             </section>
         );
@@ -81,7 +83,7 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
     if (!job || !recipe) {
         return (
             <section className='stm-empty stm-glass' aria-busy='true'>
-                <IconSpin /> Lädt …
+                <IconSpin /> {t('common.loading')}
             </section>
         );
     }
@@ -105,7 +107,7 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
                 body: JSON.stringify(body),
             });
             const b = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(b.error || `Fehler ${res.status}`);
+            if (!res.ok) throw new Error(b.error || `HTTP ${res.status}`);
             return b;
         } catch (e) {
             setError(e instanceof Error ? e.message : String(e));
@@ -134,15 +136,15 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
         return (
             <section className='stm-card stm-glass' style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <h2 className='stm-title'>{job.recipe?.name || recipe.name}</h2>
-                <p style={{ margin: 0 }}>Ist in Mealie gespeichert.</p>
+                <p style={{ margin: 0 }}>{t('review.savedText')}</p>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                     {job.mealieUrl && (
                         <a className='stm-btn stm-btn-primary' href={job.mealieUrl} target='_blank' rel='noreferrer'>
-                            In Mealie öffnen
+                            {t('common.openMealie')}
                         </a>
                     )}
                     <button type='button' className='stm-btn' onClick={onClose}>
-                        Zurück
+                        {t('common.back')}
                     </button>
                 </div>
             </section>
@@ -156,17 +158,17 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
             <aside className='stm-side'>
                 <section className='stm-card stm-glass' aria-labelledby='stm-pic-h'>
                     <h3 id='stm-pic-h' className='stm-h4' style={{ marginBottom: 10 }}>
-                        Bild für Mealie
+                        {t('review.image')}
                     </h3>
                     {job.imageCount > 0 ? (
-                        <div className='stm-pics' role='radiogroup' aria-label='Bild auswählen'>
+                        <div className='stm-pics' role='radiogroup' aria-label={t('review.chooseImage')}>
                             {Array.from({ length: job.imageCount }, (_, n) => (
                                 <button
                                     key={n}
                                     type='button'
                                     role='radio'
                                     aria-checked={imageIndex === n}
-                                    aria-label={`Bild ${n + 1}`}
+                                    aria-label={t('review.imageN', { n: n + 1 })}
                                     className='stm-pic'
                                     style={{ backgroundImage: `url("${imageUrl(job, n)}")` }}
                                     onClick={() => setImageIndex(n)}
@@ -175,17 +177,17 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
                         </div>
                     ) : (
                         <p className='stm-small' style={{ margin: 0 }}>
-                            Keine Bilder im Post gefunden.
+                            {t('review.noImages')}
                         </p>
                     )}
                 </section>
 
                 <section className='stm-card stm-glass' aria-labelledby='stm-src-h'>
                     <h3 id='stm-src-h' className='stm-h4' style={{ marginBottom: 8 }}>
-                        Quelle
+                        {t('review.source')}
                     </h3>
                     <p className='stm-small' style={{ margin: '0 0 4px' }}>
-                        {sourceLabel(job)}
+                        {sourceLabel(t, job)}
                         {job.model ? ` · ${job.model}` : ''}
                     </p>
                     <a href={job.url} target='_blank' rel='noreferrer' style={{ color: 'var(--accent)', wordBreak: 'break-all', fontSize: 14 }}>
@@ -193,48 +195,48 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
                     </a>
                     {old > 10 && (
                         <p className='stm-banner stm-banner-warn' style={{ margin: '10px 0 0', padding: 0 }}>
-                            Entwurf ist schon {old} Tage alt.
+                            {t('review.old', { n: old })}
                         </p>
                     )}
                 </section>
 
                 <section className='stm-card stm-glass' aria-labelledby='stm-hint-h'>
                     <h3 id='stm-hint-h' className='stm-h4' style={{ marginBottom: 8 }}>
-                        Nochmal schreiben lassen
+                        {t('review.rewriteTitle')}
                     </h3>
                     <textarea
                         className='stm-input'
                         rows={3}
                         value={hint}
                         onChange={(e) => setHint(e.target.value)}
-                        placeholder='z. B. „Für 2 Personen“ oder „Schritte kürzer“'
-                        aria-label='Hinweis für Claude'
+                        placeholder={t('review.hintPh')}
+                        aria-label={t('review.hint')}
                     />
                     <button type='button' className='stm-btn' style={{ width: '100%', marginTop: 10 }} disabled={!!busy} onClick={rewrite}>
                         {busy === 'rewrite' ? <IconSpin /> : null}
-                        Neu schreiben
+                        {t('review.rewrite')}
                     </button>
                     <p className='stm-small' style={{ margin: '8px 0 0' }}>
-                        Deine Änderungen werden mitgeschickt.
+                        {t('review.rewriteNote')}
                     </p>
                 </section>
             </aside>
 
             <main className='stm-main'>
-                <section className='stm-card stm-glass' style={{ display: 'flex', flexDirection: 'column', gap: 18 }} aria-label='Rezept prüfen'>
+                <section className='stm-card stm-glass' style={{ display: 'flex', flexDirection: 'column', gap: 18 }} aria-label={t('review.formLabel')}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-                        <p className='stm-eyebrow'>Entwurf prüfen</p>
-                        <button type='button' className='stm-icon-btn' aria-label='Schließen' onClick={onClose}>
+                        <p className='stm-eyebrow'>{t('review.heading')}</p>
+                        <button type='button' className='stm-icon-btn' aria-label={t('common.close')} onClick={onClose}>
                             <IconX />
                         </button>
                     </div>
 
                     <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <span className='stm-label'>Titel</span>
+                        <span className='stm-label'>{t('review.title')}</span>
                         <textarea
                             className='stm-input stm-serif'
                             rows={1}
-                            style={{ fontSize: 22, fontWeight: 650 }}
+                            style={{ fontSize: 22, fontWeight: 650, resize: 'none' }}
                             value={recipe.name}
                             onChange={(e) => set('name', e.target.value.replace(/\n/g, ' '))}
                             onKeyDown={(e) => {
@@ -243,27 +245,27 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
                         />
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <span className='stm-label'>Beschreibung</span>
+                        <span className='stm-label'>{t('review.description')}</span>
                         <textarea className='stm-input' rows={3} value={recipe.description} onChange={(e) => set('description', e.target.value)} />
                     </label>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
                         <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            <span className='stm-label'>Portionen</span>
+                            <span className='stm-label'>{t('review.servings')}</span>
                             <input className='stm-input' inputMode='numeric' value={numText(recipe.servings)} onChange={(e) => set('servings', parseNum(e.target.value))} />
                         </label>
                         <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            <span className='stm-label'>Gesamtzeit</span>
-                            <input className='stm-input' value={recipe.totalTime ?? ''} placeholder='35 Min' onChange={(e) => set('totalTime', e.target.value || null)} />
+                            <span className='stm-label'>{t('review.totalTime')}</span>
+                            <input className='stm-input' value={recipe.totalTime ?? ''} placeholder={t('review.timePh')} onChange={(e) => set('totalTime', e.target.value || null)} />
                         </label>
                         <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            <span className='stm-label'>Vorbereitung</span>
-                            <input className='stm-input' value={recipe.prepTime ?? ''} placeholder='15 Min' onChange={(e) => set('prepTime', e.target.value || null)} />
+                            <span className='stm-label'>{t('review.prepTime')}</span>
+                            <input className='stm-input' value={recipe.prepTime ?? ''} placeholder={t('review.prepPh')} onChange={(e) => set('prepTime', e.target.value || null)} />
                         </label>
                         <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            <span className='stm-label'>Kategorie</span>
+                            <span className='stm-label'>{t('review.category')}</span>
                             <select className='stm-input' style={{ width: '100%', borderRadius: 12 }} value={recipe.category ?? ''} onChange={(e) => set('category', e.target.value || null)}>
-                                <option value=''>– keine –</option>
+                                <option value=''>{t('review.none')}</option>
                                 {Array.from(new Set([...meta.categories, ...(recipe.category ? [recipe.category] : [])])).map((c) => (
                                     <option key={c} value={c}>
                                         {c}
@@ -275,13 +277,13 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
 
                     <div>
                         <h3 className='stm-h4' style={{ marginBottom: 10 }}>
-                            Zutaten
+                            {t('h.ingredients')}
                         </h3>
                         <div className='stm-ing-grid stm-small' aria-hidden='true' style={{ marginBottom: 6 }}>
-                            <span>Menge</span>
-                            <span>Einheit</span>
-                            <span>Lebensmittel</span>
-                            <span className='stm-col-note'>Notiz</span>
+                            <span>{t('review.qty')}</span>
+                            <span>{t('review.unit')}</span>
+                            <span>{t('review.food')}</span>
+                            <span className='stm-col-note'>{t('review.note')}</span>
                             <span className='stm-col-badge' />
                             <span />
                         </div>
@@ -291,7 +293,7 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
                                     <input
                                         className='stm-input'
                                         inputMode='decimal'
-                                        aria-label={`Menge ${n + 1}`}
+                                        aria-label={`${t('review.qty')} ${n + 1}`}
                                         value={qtyDraft[n] ?? numText(ing.quantity)}
                                         onChange={(e) => {
                                             const v = e.target.value;
@@ -299,16 +301,16 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
                                             setIng(n, { quantity: parseNum(v) });
                                         }}
                                     />
-                                    <input className='stm-input' aria-label={`Einheit ${n + 1}`} value={ing.unit ?? ''} onChange={(e) => setIng(n, { unit: e.target.value || null, unitId: null })} />
-                                    <input className='stm-input' aria-label={`Lebensmittel ${n + 1}`} value={ing.food} onChange={(e) => setIng(n, { food: e.target.value, foodId: null })} />
-                                    <input className='stm-input stm-col-note' aria-label={`Notiz ${n + 1}`} value={ing.note ?? ''} onChange={(e) => setIng(n, { note: e.target.value || null })} />
+                                    <input className='stm-input' aria-label={`${t('review.unit')} ${n + 1}`} value={ing.unit ?? ''} onChange={(e) => setIng(n, { unit: e.target.value || null, unitId: null })} />
+                                    <input className='stm-input' aria-label={`${t('review.food')} ${n + 1}`} value={ing.food} onChange={(e) => setIng(n, { food: e.target.value, foodId: null })} />
+                                    <input className='stm-input stm-col-note' aria-label={`${t('review.note')} ${n + 1}`} value={ing.note ?? ''} onChange={(e) => setIng(n, { note: e.target.value || null })} />
                                     <span className='stm-badge stm-col-badge' style={{ alignSelf: 'center', color: ing.foodId ? 'var(--ok)' : 'var(--warn)' }}>
-                                        {ing.foodId ? 'vorhanden' : 'neu'}
+                                        {ing.foodId ? t('review.exists') : t('review.new')}
                                     </span>
                                     <button
                                         type='button'
                                         className='stm-icon-btn'
-                                        aria-label={`Zutat ${n + 1} entfernen`}
+                                        aria-label={t('review.removeIngredient', { n: n + 1 })}
                                         onClick={() => set('ingredients', recipe.ingredients.filter((_, k) => k !== n))}
                                     >
                                         <IconTrash />
@@ -322,13 +324,13 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
                             style={{ marginTop: 10 }}
                             onClick={() => set('ingredients', [...recipe.ingredients, { quantity: null, unit: null, food: '', note: null }])}
                         >
-                            <IconPlus /> Zutat
+                            <IconPlus /> {t('review.addIngredient')}
                         </button>
                     </div>
 
                     <div>
                         <h3 className='stm-h4' style={{ marginBottom: 10 }}>
-                            Zubereitung
+                            {t('h.instructions')}
                         </h3>
                         <ol className='stm-steps-out'>
                             {recipe.instructions.map((s, n) => (
@@ -337,14 +339,14 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
                                     <textarea
                                         className='stm-input'
                                         rows={2}
-                                        aria-label={`Schritt ${n + 1}`}
+                                        aria-label={t('review.step', { n: n + 1 })}
                                         value={s}
                                         onChange={(e) => set('instructions', recipe.instructions.map((x, k) => (k === n ? e.target.value : x)))}
                                     />
                                     <button
                                         type='button'
                                         className='stm-icon-btn'
-                                        aria-label={`Schritt ${n + 1} entfernen`}
+                                        aria-label={t('review.removeStep', { n: n + 1 })}
                                         onClick={() => set('instructions', recipe.instructions.filter((_, k) => k !== n))}
                                     >
                                         <IconTrash />
@@ -353,14 +355,14 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
                             ))}
                         </ol>
                         <button type='button' className='stm-btn' style={{ marginTop: 10 }} onClick={() => set('instructions', [...recipe.instructions, ''])}>
-                            <IconPlus /> Schritt
+                            <IconPlus /> {t('review.addStep')}
                         </button>
                     </div>
 
                     {recipe.notes.length > 0 && (
                         <div>
                             <h3 className='stm-h4' style={{ marginBottom: 10 }}>
-                                Notizen
+                                {t('h.notes')}
                             </h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                 {recipe.notes.map((note, n) => (
@@ -368,11 +370,11 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
                                         <textarea
                                             className='stm-input'
                                             rows={2}
-                                            aria-label={`Notiz ${n + 1}`}
+                                            aria-label={t('review.noteN', { n: n + 1 })}
                                             value={note.text}
                                             onChange={(e) => set('notes', recipe.notes.map((x, k) => (k === n ? { ...x, text: e.target.value } : x)))}
                                         />
-                                        <button type='button' className='stm-icon-btn' aria-label={`Notiz ${n + 1} entfernen`} onClick={() => set('notes', recipe.notes.filter((_, k) => k !== n))}>
+                                        <button type='button' className='stm-icon-btn' aria-label={t('review.removeNote', { n: n + 1 })} onClick={() => set('notes', recipe.notes.filter((_, k) => k !== n))}>
                                             <IconTrash />
                                         </button>
                                     </div>
@@ -383,7 +385,7 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
 
                     <div>
                         <h3 className='stm-h4' style={{ marginBottom: 10 }}>
-                            Tags
+                            {t('h.tags')}
                         </h3>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                             {tagOptions.map((t) => {
@@ -412,15 +414,15 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
 
                     <div className='stm-done-bar'>
                         <button type='button' className='stm-btn stm-btn-danger' disabled={!!busy} onClick={discard}>
-                            Verwerfen
+                            {t('common.discard')}
                         </button>
                         <button type='button' className='stm-btn' disabled={!!busy} onClick={rewrite}>
-                            Neu schreiben
+                            {t('review.rewrite')}
                         </button>
                         <span style={{ flex: 1 }} />
                         <button type='button' className='stm-btn stm-btn-primary stm-btn-big' disabled={!!busy || !recipe.name.trim() || job.status === 'saving'} onClick={save}>
                             {busy === 'save' || job.status === 'saving' ? <IconSpin /> : null}
-                            In Mealie speichern
+                            {t('review.save')}
                         </button>
                     </div>
                 </section>

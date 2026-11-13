@@ -8,6 +8,8 @@ import { HistoryTab } from './HistoryTab';
 import { NewTab } from './NewTab';
 import { ReviewView } from './ReviewView';
 import { SettingsTab } from './SettingsTab';
+import { LangContext } from './i18n';
+import { type Lang, isLang, translate, type MsgKey } from '@/lib/stm/i18n';
 import { IconPot, type PartialRecipe } from './ui';
 
 export type Tab = 'neu' | 'entwuerfe' | 'verlauf' | 'einstellungen';
@@ -41,13 +43,33 @@ export function StmApp() {
     const [focusId, setFocusId] = useState<string | null>(null);
     const [connected, setConnected] = useState(true);
     const [notice, setNotice] = useState<string | null>(null);
+    const [lang, setLangState] = useState<Lang>('de');
     const handledParams = useRef(false);
+    const t = useCallback((key: MsgKey, vars?: Record<string, string | number>) => translate(lang, key, vars), [lang]);
+    useEffect(() => {
+        document.documentElement.lang = lang;
+    }, [lang]);
+    const setLang = (l: Lang) => {
+        setLangState(l);
+        writeLS('stm-lang', l);
+    };
 
     /* preferences (per device) */
     useEffect(() => {
         setTheme(readLS('stm-theme', 'kueche'));
         setMode(readLS('stm-mode', 'auto') as Mode);
         setDirect(readLS('stm-direct', 'false') === 'true');
+        const stored = readLS('stm-lang', '');
+        if (isLang(stored)) setLangState(stored);
+        else {
+            // no choice on this device yet: follow the server's recipe language, else the browser
+            const browser: Lang = (navigator.language || '').toLowerCase().startsWith('de') ? 'de' : 'en';
+            setLangState(browser);
+            fetch('/api/settings')
+                .then((r) => r.json())
+                .then((b) => isLang(b?.settings?.language) && setLangState(b.settings.language))
+                .catch(() => undefined);
+        }
         try {
             const mq = window.matchMedia('(prefers-color-scheme: dark)');
             setSysDark(mq.matches);
@@ -107,13 +129,13 @@ export function StmApp() {
                 body: JSON.stringify({ text, direct, source }),
             });
             const body = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(body.error || 'Konnte nicht starten');
+            if (!res.ok) throw new Error(body.error || t('common.startFailed'));
             if (Array.isArray(body.jobs) && body.jobs[0]) setFocusId(body.jobs[0]);
             setTab('neu');
             setReviewId(null);
             return body.jobs as string[];
         },
-        [direct],
+        [direct, t],
     );
 
     /* share target / deep links (once) */
@@ -127,7 +149,7 @@ export function StmApp() {
         const wantTab = searchParams.get('tab') as Tab | null;
         if (shared) {
             submit(shared, 'share')
-                .then(() => setNotice('Link übernommen – läuft im Hintergrund weiter, du kannst die App schließen.'))
+                .then(() => setNotice(t('notice.shared')))
                 .catch((e) => setNotice(e.message));
         } else if (draft) {
             setReviewId(draft);
@@ -170,14 +192,15 @@ export function StmApp() {
     };
 
     const tabs: [Tab, string, number][] = [
-        ['neu', 'Neu', queue.length + (active ? 1 : 0)],
-        ['entwuerfe', 'Entwürfe', drafts.length],
-        ['verlauf', 'Verlauf', 0],
-        ['einstellungen', 'Einstellungen', 0],
+        ['neu', t('tab.new'), queue.length + (active ? 1 : 0)],
+        ['entwuerfe', t('tab.drafts'), drafts.length],
+        ['verlauf', t('tab.history'), 0],
+        ['einstellungen', t('tab.settings'), 0],
     ];
 
     return (
-        <div className='stm' data-theme={theme} data-dark={dark ? 'true' : 'false'}>
+        <LangContext.Provider value={lang}>
+        <div className='stm' data-theme={theme} data-dark={dark ? 'true' : 'false'} lang={lang}>
             <div className='stm-wrap'>
                 <header className='stm-header stm-glass'>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -188,10 +211,10 @@ export function StmApp() {
                             <span className='stm-serif' style={{ fontSize: 22, fontWeight: 650, letterSpacing: '-0.01em' }}>
                                 Social → Mealie
                             </span>
-                            <span className='stm-small stm-subtitle'>Rezepte aus Reels, TikToks und Posts – geschrieben von Claude</span>
+                            <span className='stm-small stm-subtitle'>{t('app.subtitle')}</span>
                         </div>
                     </div>
-                    <nav aria-label='Bereiche' className='stm-tabs'>
+                    <nav aria-label={t('nav.label')} className='stm-tabs'>
                         {tabs.map(([key, label, count]) => (
                             <button key={key} type='button' className='stm-tab' aria-current={tab === key ? 'page' : undefined} onClick={() => go(key)}>
                                 <span>{label}</span>
@@ -203,14 +226,14 @@ export function StmApp() {
 
                 {!connected && (
                     <div className='stm-banner stm-banner-warn stm-glass' role='status'>
-                        Verbindung zum Server unterbrochen – verbinde neu …
+                        {t('conn.lost')}
                     </div>
                 )}
                 {notice && (
                     <div className='stm-banner stm-glass' role='status' style={{ justifyContent: 'space-between' }}>
                         <span>{notice}</span>
                         <button type='button' className='stm-btn' onClick={() => setNotice(null)}>
-                            OK
+                            {t('common.ok')}
                         </button>
                     </div>
                 )}
@@ -249,6 +272,8 @@ export function StmApp() {
                             <SettingsTab
                                 theme={theme}
                                 mode={mode}
+                                lang={lang}
+                                setLang={setLang}
                                 setTheme={(t) => {
                                     setTheme(t);
                                     writeLS('stm-theme', t);
@@ -263,7 +288,7 @@ export function StmApp() {
                 )}
             </div>
 
-            <nav aria-label='Bereiche' className='stm-tabbar'>
+            <nav aria-label={t('nav.label')} className='stm-tabbar'>
                 {tabs.map(([key, label, count]) => (
                     <button key={key} type='button' aria-current={tab === key && !reviewId ? 'page' : undefined} onClick={() => go(key)}>
                         <span>{label}</span>
@@ -272,5 +297,6 @@ export function StmApp() {
                 ))}
             </nav>
         </div>
+        </LangContext.Provider>
     );
 }

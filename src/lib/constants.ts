@@ -36,5 +36,6 @@ export const env: envTypes = {
     GOTIFY_URL: (process.env.GOTIFY_URL?.trim() || "").replace(/\/+$/, ""),
     GOTIFY_TOKEN: process.env.GOTIFY_TOKEN?.trim() || "",
     APP_URL: (process.env.APP_URL?.trim() || "").replace(/\/+$/, ""),
+    APP_LANGUAGE: process.env.APP_LANGUAGE?.trim().toLowerCase().startsWith("de") ? "de" : "en",
     RETENTION_DAYS: Number(process.env.RETENTION_DAYS || 10),
 };

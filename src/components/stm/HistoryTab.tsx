@@ -2,9 +2,12 @@
 
 import { useState } from 'react';
 import type { Job } from '@/lib/stm/types';
-import { IconCheck, IconX, STATUS_TEXT, dateTime, sourceLabel } from './ui';
+import { useLang, useT } from './i18n';
+import { IconCheck, IconX, dateTime, sourceLabel, statusText } from './ui';
 
-export function HistoryTab({ history, onFocus }: { history: Job[]; onReview: (id: string) => void; onFocus: (id: string) => void }) {
+export function HistoryTab({ history, onFocus, retentionDays = 10 }: { history: Job[]; onReview: (id: string) => void; onFocus: (id: string) => void; retentionDays?: number }) {
+    const t = useT();
+    const lang = useLang();
     const [busy, setBusy] = useState<string | null>(null);
     const act = async (id: string, action: 'retry' | 'force') => {
         setBusy(id);
@@ -25,9 +28,9 @@ export function HistoryTab({ history, onFocus }: { history: Job[]; onReview: (id
         return (
             <section className='stm-empty stm-glass'>
                 <p className='stm-h2' style={{ marginBottom: 8 }}>
-                    Noch nichts im Verlauf
+                    {t('history.emptyTitle')}
                 </p>
-                <p style={{ margin: 0 }}>Gespeicherte, doppelte und fehlgeschlagene Links tauchen hier auf und verschwinden nach 10 Tagen.</p>
+                <p style={{ margin: 0 }}>{t('history.emptyText', { n: retentionDays })}</p>
             </section>
         );
     }
@@ -36,9 +39,9 @@ export function HistoryTab({ history, onFocus }: { history: Job[]; onReview: (id
         <section className='stm-card stm-glass' aria-labelledby='stm-hist-h'>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, marginBottom: 6 }}>
                 <h2 id='stm-hist-h' className='stm-h2'>
-                    Verlauf
+                    {t('tab.history')}
                 </h2>
-                <span className='stm-small'>wird nach 10 Tagen gelöscht</span>
+                <span className='stm-small'>{t('history.retention', { n: retentionDays })}</span>
             </div>
             {history.map((j) => {
                 const color = j.status === 'saved' ? 'var(--ok)' : j.status === 'failed' ? 'var(--err)' : 'var(--warn)';
@@ -52,7 +55,7 @@ export function HistoryTab({ history, onFocus }: { history: Job[]; onReview: (id
                                 {j.recipe?.name || j.duplicateOf?.name || j.title || j.url.replace(/^https?:\/\/(www\.)?/, '')}
                             </div>
                             <div className='stm-small'>
-                                <span style={{ color, fontWeight: 600 }}>{STATUS_TEXT[j.status]}</span> · {sourceLabel(j)} · {dateTime(j.updatedAt)}
+                                <span style={{ color, fontWeight: 600 }}>{statusText(t, j.status)}</span> · {sourceLabel(t, j)} · {dateTime(lang, j.updatedAt)}
                             </div>
                             {j.status === 'failed' && j.error && (
                                 <div className='stm-small' style={{ marginTop: 2 }}>
@@ -63,26 +66,26 @@ export function HistoryTab({ history, onFocus }: { history: Job[]; onReview: (id
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                             {j.status === 'saved' && j.mealieUrl && (
                                 <a className='stm-btn' href={j.mealieUrl} target='_blank' rel='noreferrer'>
-                                    Öffnen
+                                    {t('common.open')}
                                 </a>
                             )}
                             {j.status === 'duplicate' && j.duplicateOf && (
                                 <>
                                     <a className='stm-btn' href={j.duplicateOf.url} target='_blank' rel='noreferrer'>
-                                        Öffnen
+                                        {t('common.open')}
                                     </a>
                                     <button type='button' className='stm-btn' disabled={busy === j.id} onClick={() => act(j.id, 'force')}>
-                                        Trotzdem neu erstellen
+                                        {t('common.forceNew')}
                                     </button>
                                 </>
                             )}
                             {j.status === 'failed' && (
                                 <>
                                     <button type='button' className='stm-btn stm-btn-primary' disabled={busy === j.id} onClick={() => act(j.id, 'retry')}>
-                                        Nochmal versuchen
+                                        {t('common.retry')}
                                     </button>
                                     <button type='button' className='stm-btn stm-btn-danger' disabled={busy === j.id} onClick={() => remove(j.id)}>
-                                        Entfernen
+                                        {t('common.remove')}
                                     </button>
                                 </>
                             )}

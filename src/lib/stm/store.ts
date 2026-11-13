@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { EventEmitter } from "events";
 import { env } from "@/lib/constants";
+import { type MsgKey, isLang, translate } from "./i18n";
 import { DEFAULT_SETTINGS, type Job, type Settings, type StmEvent } from "./types";
 
 /**
@@ -49,16 +50,24 @@ function load(): StoreData {
             if (typeof j.imageCount !== "number") j.imageCount = 0;
             if (!j.timings) j.timings = {};
         }
+        const rawRules = raw.settings?.rules || {};
+        // older stores (German-only version) had rules.german and no language
+        const language = isLang(raw.settings?.language) ? raw.settings.language : raw.settings ? "de" : env.APP_LANGUAGE;
         return {
             jobs,
             settings: {
                 ...DEFAULT_SETTINGS,
                 ...(raw.settings || {}),
-                rules: { ...DEFAULT_SETTINGS.rules, ...(raw.settings?.rules || {}) },
+                language,
+                rules: {
+                    ...DEFAULT_SETTINGS.rules,
+                    ...rawRules,
+                    translate: typeof rawRules.translate === "boolean" ? rawRules.translate : rawRules.german ?? true,
+                },
             },
         };
     } catch {
-        return { jobs: [], settings: { ...DEFAULT_SETTINGS, rules: { ...DEFAULT_SETTINGS.rules } } };
+        return { jobs: [], settings: { ...DEFAULT_SETTINGS, language: env.APP_LANGUAGE, rules: { ...DEFAULT_SETTINGS.rules } } };
     }
 }
 
@@ -165,4 +174,9 @@ export function cleanup() {
         s.data.jobs = keep;
         persistSoon();
     }
+}
+
+/** Server-side text in the configured recipe language. */
+export function st(key: MsgKey, vars?: Record<string, string | number>) {
+    return translate(getSettings().language, key, vars);
 }

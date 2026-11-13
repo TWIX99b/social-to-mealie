@@ -1,3 +1,5 @@
+import type { Lang } from "./i18n";
+
 // Shared types for the redesigned social-to-mealie (jobs, drafts, settings).
 
 export type JobStatus =
@@ -79,8 +81,10 @@ export interface Job {
 }
 
 export interface Settings {
+    /** recipe language; also used for notifications and server messages */
+    language: Lang;
     rules: {
-        german: boolean;
+        translate: boolean;
         metric: boolean;
         spoons: boolean;
         oven: boolean;
@@ -91,7 +95,8 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-    rules: { german: true, metric: true, spoons: true, oven: true, existingTags: true },
+    language: "en",
+    rules: { translate: true, metric: true, spoons: true, oven: true, existingTags: true },
     freeText: "",
     model: "auto",
 };

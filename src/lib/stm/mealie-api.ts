@@ -179,7 +179,7 @@ export async function saveRecipe(
 ): Promise<{ slug: string; url: string }> {
     const slug = await mealieJson<string>("/api/recipes", {
         method: "POST",
-        body: JSON.stringify({ name: recipe.name.trim() || "Neues Rezept" }),
+        body: JSON.stringify({ name: recipe.name.trim() || "Recipe" }),
     });
 
     try {

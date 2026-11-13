@@ -6,7 +6,7 @@ import type React from 'react';
 
 export const metadata: Metadata = {
   title: 'Social → Mealie',
-  description: 'Rezepte aus Reels, TikToks und Posts – geschrieben von Claude, gespeichert in Mealie.',
+  description: 'Recipes from reels, TikToks and posts – written by Claude, saved to Mealie.',
   icons: {
     icon: [
       { url: '/icon.svg', type: 'image/svg+xml' },
@@ -26,7 +26,7 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang='de' suppressHydrationWarning>
+    <html lang='en' suppressHydrationWarning>
       <head />
       <body style={{ margin: 0 }}>
         <NextIntlClientProvider>{children}</NextIntlClientProvider>

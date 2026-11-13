@@ -28,6 +28,7 @@ export type envTypes = {
     GOTIFY_TOKEN: string;
     APP_URL: string;
     RETENTION_DAYS: number;
+    APP_LANGUAGE: "de" | "en";
 };
 
 export type recipeResult = {

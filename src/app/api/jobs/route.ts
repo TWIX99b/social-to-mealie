@@ -1,4 +1,4 @@
-import { listJobs } from "@/lib/stm/store";
+import { listJobs, st } from "@/lib/stm/store";
 import { createJob, extractUrls, kickWorker } from "@/lib/stm/worker";
 
 export const dynamic = "force-dynamic";
@@ -36,16 +36,16 @@ export async function POST(req: Request) {
             text = await req.text();
         }
     } catch {
-        return Response.json({ error: "Anfrage konnte nicht gelesen werden" }, { status: 400 });
+        return Response.json({ error: st("srv.badRequest") }, { status: 400 });
     }
 
     const urls = extractUrls(text);
     if (urls.length === 0) {
-        return Response.json({ error: "Kein Link gefunden" }, { status: 400 });
+        return Response.json({ error: st("srv.noLink") }, { status: 400 });
     }
     const jobs = urls.slice(0, 20).map((url) => createJob(url, { source, direct }));
     return Response.json(
-        { ok: true, message: `${jobs.length} Link(s) in der Warteschlange`, jobs: jobs.map((j) => j.id) },
+        { ok: true, message: st("srv.queued", { n: jobs.length }), jobs: jobs.map((j) => j.id) },
         { status: 201 },
     );
 }

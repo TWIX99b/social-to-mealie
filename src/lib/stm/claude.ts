@@ -1,30 +1,31 @@
 import fs from "fs";
 import { env } from "@/lib/constants";
 import { parsePartialJson } from "./partial-json";
+import { st } from "./store";
 import type { DraftRecipe, Ingredient, Settings } from "./types";
 
 const RECIPE_TOOL_SCHEMA = {
     type: "object",
     properties: {
-        name: { type: "string", description: "Rezepttitel" },
-        description: { type: "string", description: "1–2 Sätze, appetitlich und sachlich" },
-        servings: { type: ["integer", "null"], description: "Anzahl Portionen" },
-        totalTime: { type: ["string", "null"], description: 'Gesamtzeit, Format "30 Min" oder "1 Std 20 Min"' },
-        prepTime: { type: ["string", "null"], description: 'Arbeitszeit, gleiches Format' },
+        name: { type: "string", description: "Recipe title" },
+        description: { type: "string", description: "1–2 sentences, appetising and factual" },
+        servings: { type: ["integer", "null"], description: "Number of servings" },
+        totalTime: { type: ["string", "null"], description: "Total time" },
+        prepTime: { type: ["string", "null"], description: "Hands-on time" },
         ingredients: {
             type: "array",
             items: {
                 type: "object",
                 properties: {
-                    quantity: { type: ["number", "null"], description: "Menge als Zahl (0,5 → 0.5); null wenn ohne Menge" },
-                    unit: { type: ["string", "null"], description: "Einheit aus der Einheitenliste oder null (bei Stückzahlen null)" },
-                    food: { type: "string", description: "Lebensmittel im Singular-Grundwort, z. B. Zwiebel, Knoblauch, Kokosmilch" },
-                    note: { type: ["string", "null"], description: "Zusatz wie gehackt, rot, zum Anbraten, ca. 1 kg" },
+                    quantity: { type: ["number", "null"], description: "Amount as a number (½ → 0.5); null without amount" },
+                    unit: { type: ["string", "null"], description: "Unit from the unit list, or null (null for counted items)" },
+                    food: { type: "string", description: "Food as the singular base word" },
+                    note: { type: ["string", "null"], description: "Extra such as chopped, red, for frying" },
                 },
                 required: ["quantity", "unit", "food", "note"],
             },
         },
-        instructions: { type: "array", items: { type: "string" }, description: "Arbeitsschritte, je Schritt ein klarer Absatz" },
+        instructions: { type: "array", items: { type: "string" }, description: "Steps, one clear paragraph each" },
         tags: { type: "array", items: { type: "string" } },
         category: { type: ["string", "null"] },
         notes: {
@@ -34,7 +35,7 @@ const RECIPE_TOOL_SCHEMA = {
                 properties: { title: { type: "string" }, text: { type: "string" } },
                 required: ["title", "text"],
             },
-            description: "Tipps oder Varianten aus dem Video, sonst leer",
+            description: "Tips or variations from the video, otherwise empty",
         },
     },
     required: ["name", "description", "servings", "totalTime", "prepTime", "ingredients", "instructions", "tags", "category", "notes"],
@@ -57,45 +58,56 @@ export interface ClaudeContext {
 
 function systemPrompt(ctx: ClaudeContext): string {
     const r = ctx.settings.rules;
+    const de = ctx.settings.language === "de";
+    const language = de ? "German" : "English";
     const rules: string[] = [
-        "Du bist ein erfahrener Koch und Rezeptredakteur. Aus Social-Media-Posts (Beschreibung, Bilder, Video-Transkript) machst du ein sauberes, nachkochbares Rezept.",
-        "Erfinde keine Zutaten oder Mengen, die nicht aus dem Material hervorgehen; schätze nur, wenn es offensichtlich ist, und kennzeichne Schätzungen in der Notiz mit „ca.“.",
-        "Zutaten in der Reihenfolge der Verwendung. Lebensmittel als Grundwort (z. B. „Zwiebel“, nicht „Zwiebeln, gewürfelt“ – das gehört in die Notiz).",
-        "Bei Stückzahlen (2 Zwiebeln, 1 Limette) bleibt die Einheit null.",
+        "You are an experienced cook and recipe editor. From a social media post (description, images, video transcript) you write a clean recipe that can be cooked from.",
+        "Do not invent ingredients or amounts that are not in the material; only estimate when it is obvious, and mark estimates in the note (\"" + (de ? "ca." : "approx.") + "\").",
+        "List ingredients in the order they are used. The food is the plain base word (e.g. \"" + (de ? "Zwiebel" : "onion") + "\"); preparation like chopped or diced goes into the note.",
+        "For counted items (2 onions, 1 lime) the unit stays null.",
+        r.translate
+            ? `Write everything (title, description, ingredients, steps, notes) in ${language}, translating if the post is in another language.`
+            : `Write in ${language} unless the post is clearly in another language; then keep the post's language.`,
+        `Times use the format ${de ? '"30 Min" or "1 Std 20 Min"' : '"30 min" or "1 h 20 min"'}.`,
     ];
-    if (r.german) rules.push("Schreibe alles auf Deutsch (Titel, Beschreibung, Zutaten, Schritte, Notizen).");
-    if (r.metric) rules.push("Nutze metrische Einheiten (g, kg, ml, l) und °C; rechne Cups, Unzen und Fahrenheit um.");
-    if (r.spoons) rules.push("Löffelmaße als EL und TL, nie tbsp/tsp.");
-    if (r.oven) rules.push("Kommt ein Ofen vor, nenne die Ofenart (Ober-/Unterhitze oder Umluft) mit Temperatur.");
-    if (r.existingTags) {
-        rules.push("Tags und Kategorie NUR aus den vorhandenen Listen wählen; nichts Neues erfinden. Passt nichts, leere Liste bzw. null.");
-    } else {
-        rules.push("Tags bevorzugt aus der vorhandenen Liste; neue nur wenn wirklich nötig.");
+    if (r.metric) rules.push("Use metric units (g, kg, ml, l) and °C; convert cups, ounces and Fahrenheit.");
+    if (r.spoons) rules.push(de ? "Spoon measures as EL and TL, never tbsp/tsp." : "Spoon measures as tbsp and tsp.");
+    if (r.oven) {
+        rules.push(
+            de
+                ? "If an oven is used, name the mode (Ober-/Unterhitze or Umluft) with the temperature."
+                : "If an oven is used, name the mode (conventional or fan) with the temperature.",
+        );
     }
-    if (ctx.settings.freeText.trim()) rules.push(`Eigene Regeln des Nutzers: ${ctx.settings.freeText.trim()}`);
-    rules.push(`Bekannte Einheiten in Mealie: ${ctx.units.join(", ") || "(keine)"}. Nutze diese Schreibweisen (z. B. „g“, „ml“, „EL“, „TL“, „Prise“, „Zehe“).`);
-    rules.push(`Vorhandene Tags: ${ctx.tags.join(", ") || "(keine)"}.`);
-    rules.push(`Vorhandene Kategorien: ${ctx.categories.join(", ") || "(keine)"}.`);
-    rules.push("Gib das Ergebnis ausschließlich über das Werkzeug save_recipe zurück.");
+    if (r.existingTags) {
+        rules.push("Pick tags and the category ONLY from the existing lists; never invent new ones. If nothing fits, use an empty list or null.");
+    } else {
+        rules.push("Prefer tags from the existing list; only add new ones when really needed.");
+    }
+    if (ctx.settings.freeText.trim()) rules.push(`The user's own rules: ${ctx.settings.freeText.trim()}`);
+    rules.push(`Units known in Mealie: ${ctx.units.join(", ") || "(none)"}. Use these spellings.`);
+    rules.push(`Existing tags: ${ctx.tags.join(", ") || "(none)"}.`);
+    rules.push(`Existing categories: ${ctx.categories.join(", ") || "(none)"}.`);
+    rules.push("Return the result only through the save_recipe tool.");
     return rules.join("\n");
 }
 
 function userText(ctx: ClaudeContext): string {
     const parts = [
-        `<quelle>${ctx.url}</quelle>`,
-        ctx.title ? `<titel>${ctx.title}</titel>` : "",
-        `<beschreibung>\n${ctx.description || "(keine Beschreibung)"}\n</beschreibung>`,
-        `<transkript>\n${ctx.transcript?.trim() || "(kein gesprochener Text im Video)"}\n</transkript>`,
+        `<source>${ctx.url}</source>`,
+        ctx.title ? `<title>${ctx.title}</title>` : "",
+        `<description>\n${ctx.description || "(no description)"}\n</description>`,
+        `<transcript>\n${ctx.transcript?.trim() || "(no speech in the video)"}\n</transcript>`,
     ];
     if (ctx.previous) {
-        parts.push(`<bisheriger_entwurf>\n${JSON.stringify(ctx.previous)}\n</bisheriger_entwurf>`);
+        parts.push(`<previous_draft>\n${JSON.stringify(ctx.previous)}\n</previous_draft>`);
         parts.push(
             ctx.hint?.trim()
-                ? `Überarbeite den bisherigen Entwurf. Hinweis des Nutzers: ${ctx.hint.trim()}`
-                : "Schreibe das Rezept noch einmal sorgfältiger und vollständiger.",
+                ? `Revise the previous draft. The user's hint: ${ctx.hint.trim()}`
+                : "Write the recipe again, more carefully and completely.",
         );
     } else {
-        parts.push("Erstelle daraus das Rezept.");
+        parts.push("Create the recipe from this.");
     }
     return parts.filter(Boolean).join("\n\n");
 }
@@ -148,7 +160,7 @@ export async function writeRecipeWithClaude(
     ctx: ClaudeContext,
     onPartial: (partial: Partial<DraftRecipe>) => void,
 ): Promise<DraftRecipe> {
-    if (!env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY fehlt – bitte in der .env eintragen.");
+    if (!env.ANTHROPIC_API_KEY) throw new Error(st("srv.claudeNoKey"));
 
     const res = await fetch(`${env.ANTHROPIC_URL}/v1/messages`, {
         method: "POST",
@@ -163,7 +175,7 @@ export async function writeRecipeWithClaude(
             max_tokens: 8192,
             stream: true,
             system: systemPrompt(ctx),
-            tools: [{ name: "save_recipe", description: "Speichert das fertige Rezept.", input_schema: RECIPE_TOOL_SCHEMA }],
+            tools: [{ name: "save_recipe", description: "Saves the finished recipe.", input_schema: RECIPE_TOOL_SCHEMA }],
             tool_choice: { type: "tool", name: "save_recipe" },
             messages: [{ role: "user", content: [...imageBlocks(ctx.imageFiles), { type: "text", text: userText(ctx) }] }],
         }),
@@ -171,11 +183,11 @@ export async function writeRecipeWithClaude(
 
     if (!res.ok || !res.body) {
         const text = await res.text().catch(() => "");
-        if (res.status === 401) throw new Error("Claude lehnt den API-Key ab – ANTHROPIC_API_KEY prüfen.");
-        if (res.status === 400 && /credit|balance/i.test(text)) throw new Error("Claude: kein Guthaben mehr in der Anthropic-Konsole.");
-        if (res.status === 404) throw new Error(`Claude kennt das Modell „${ctx.model}“ nicht.`);
-        if (res.status === 429 || res.status === 529) throw new Error("Claude ist gerade ausgelastet – bitte gleich nochmal versuchen.");
-        throw new Error(`Claude-Fehler ${res.status}: ${text.slice(0, 300)}`);
+        if (res.status === 401) throw new Error(st("srv.claudeAuth"));
+        if (res.status === 400 && /credit|balance/i.test(text)) throw new Error(st("srv.claudeCredit"));
+        if (res.status === 404) throw new Error(st("srv.claudeModel", { model: ctx.model }));
+        if (res.status === 429 || res.status === 529) throw new Error(st("srv.claudeBusy"));
+        throw new Error(st("srv.claudeError", { code: res.status, msg: text.slice(0, 300) }));
     }
 
     const reader = res.body.getReader();
@@ -215,7 +227,7 @@ export async function writeRecipeWithClaude(
             } else if (evt.type === "message_delta" && evt.delta?.stop_reason) {
                 stopReason = evt.delta.stop_reason;
             } else if (evt.type === "error") {
-                throw new Error(`Claude-Fehler: ${evt.error?.message || "unbekannt"}`);
+                throw new Error(st("srv.claudeError", { code: "", msg: evt.error?.message || "?" }));
             }
         }
     }
@@ -227,10 +239,10 @@ export async function writeRecipeWithClaude(
     } catch {
         final = parsePartialJson(json);
     }
-    if (!final) throw new Error(`Claude hat kein Rezept geliefert (stop_reason: ${stopReason || "?"}).`);
+    if (!final) throw new Error(st("srv.claudeNothing", { reason: stopReason || "?" }));
     const recipe = normalize(final);
     if (!recipe.name && recipe.ingredients.length === 0) {
-        throw new Error("Claude konnte im Post kein Rezept erkennen.");
+        throw new Error(st("srv.claudeNoRecipe"));
     }
     return recipe;
 }

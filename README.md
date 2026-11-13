@@ -26,12 +26,11 @@ Paste a link (or share it from your phone). The app downloads the video and imag
 - **Review before saving** – everything is editable, pick the cover image from the post, or let Claude rewrite it with a hint (uses the bigger model)
 - **Fits your Mealie** – ingredients are split into quantity / unit / food / note and matched against your existing foods and units; tags and categories are only picked from the ones you already have
 - **Duplicate check** – a link that is already in Mealie is recognised before Claude is asked (no cost)
-- **House rules** – German, metric, EL/TL, oven type, plus your own free-text rules and model choice, stored on the server for everyone
+- **House rules** – recipe language, always translate, metric, tbsp/tsp, oven mode, plus your own free-text rules and model choice, stored on the server for everyone
 - **Share from the phone** – iOS Shortcut via the API, Android via the PWA share target
 - **Four themes** (Küche, Homelab, Kräuter, Nacht), each light / dark / auto, saved per device
+- **English and German** – interface language per device, recipe language (also used for notifications) as a server setting
 - History is kept for 10 days, drafts stay until you handle them
-
-The interface is in German.
 
 ## Screenshots
 
@@ -106,8 +105,9 @@ The first link with audio takes a few minutes longer, because the Whisper model 
 | `EXTERNAL_MEALIE_URL` | no | `MEALIE_URL` | Mealie URL used for "open in Mealie" links |
 | `MEALIE_GROUP_NAME` | no | `home` | Mealie group, used in recipe links |
 | `LOCAL_TRANSCRIPTION_MODEL` | recommended | – | Hugging Face ONNX Whisper model, e.g. `Xenova/whisper-small` or `Xenova/whisper-base` |
-| `CLAUDE_MODEL_FAST` | no | `claude-haiku-5-5` | Model for the first draft (setting "Automatisch" / "Haiku") |
-| `CLAUDE_MODEL_SMART` | no | `claude-sonnet-5-5` | Model for "Neu schreiben" (setting "Automatisch" / "Sonnet") |
+| `CLAUDE_MODEL_FAST` | no | `claude-haiku-5-5` | Model for the first draft (setting "Automatic" / "Haiku") |
+| `CLAUDE_MODEL_SMART` | no | `claude-sonnet-5-5` | Model for "Rewrite" (setting "Automatic" / "Sonnet") |
+| `APP_LANGUAGE` | no | `en` | Recipe language for a fresh install (`en` or `de`); can be changed later in Settings |
 | `ANTHROPIC_URL` | no | `https://api.anthropic.com` | Alternative endpoint / proxy |
 | `GOTIFY_URL`, `GOTIFY_TOKEN` | no | – | Push notifications for "ready to review", saved and errors |
 | `APP_URL` | no | – | Public URL of this app; notifications link to the draft |
@@ -121,13 +121,13 @@ The first link with audio takes a few minutes longer, because the Whisper model 
 
 ## Sharing from the phone
 
-**iPhone – Shortcut "An Mealie"**
+**iPhone – Shortcut**
 
-1. Create a new shortcut, enable *Show in Share Sheet*, input: URLs and text.
+1. Create a new shortcut (e.g. "To Mealie"), enable *Show in Share Sheet*, input: URLs and text.
 2. Action *Get Contents of URL*: `https://<your-app>/api/jobs`
 3. Method `POST`, request body `JSON`, field `url` (text) = *Shortcut Input*.
 4. Optional: field `direct` (boolean) = true to save without review.
-5. Optional: *Show Notification* "Läuft – Gotify meldet sich".
+5. Optional: *Show Notification* "Running – you will get a notification".
 
 **Android** – open the app in Chrome → menu → *Install app*. "Social → Mealie" then appears in the share menu.
 
