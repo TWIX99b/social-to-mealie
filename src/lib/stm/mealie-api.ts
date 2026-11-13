@@ -1,6 +1,7 @@
 import fs from "fs";
 import { randomUUID } from "crypto";
 import { env } from "@/lib/constants";
+import { type MatchEntry, type MatchIndex, buildIndex, lookup } from "./match";
 import type { DraftRecipe, Ingredient } from "./types";
 
 interface Named {
@@ -10,6 +11,7 @@ interface Named {
     pluralName?: string | null;
     abbreviation?: string | null;
     pluralAbbreviation?: string | null;
+    aliases?: { name: string }[] | null;
 }
 
 async function mealie(pathname: string, init: RequestInit = {}): Promise<Response> {
@@ -53,23 +55,57 @@ async function listAll(pathname: string): Promise<Named[]> {
 }
 
 export const getUnits = () => listAll("/api/units");
+export const getFoods = () => listAll("/api/foods");
 export const getTags = () => listAll("/api/organizers/tags");
 export const getCategories = () => listAll("/api/organizers/categories");
 
-function forget(pathname: string) {
-    delete cache[pathname];
+/** Adds a newly created item to the cached list (a new array, so the match index is rebuilt). */
+function remember(pathname: string, item: Named) {
+    const hit = cache[pathname];
+    if (hit && item?.id) cache[pathname] = { at: hit.at, items: [...hit.items, item] };
 }
 
-function matchUnit(units: Named[], unit: string): Named | undefined {
-    const u = norm(unit);
-    return units.find((x) =>
-        [x.name, x.pluralName, x.abbreviation, x.pluralAbbreviation].some((v) => v && norm(v) === u),
-    );
+function toEntry(x: Named): MatchEntry {
+    const variants = [x.name, x.pluralName, x.abbreviation, x.pluralAbbreviation, ...(x.aliases || []).map((a) => a?.name)];
+    return { id: x.id, name: x.name, short: x.abbreviation || undefined, variants: variants.filter((v): v is string => Boolean(v)) };
+}
+
+const indexes: Record<string, { items: Named[]; index: MatchIndex }> = {};
+
+/** Match index for units or foods, rebuilt whenever the cached list changes. */
+async function indexFor(pathname: "/api/units" | "/api/foods"): Promise<{ index: MatchIndex; byId: Map<string, Named> }> {
+    const items = await listAll(pathname);
+    let entry = indexes[pathname];
+    if (!entry || entry.items !== items) {
+        entry = { items, index: buildIndex(items.map(toEntry)) };
+        indexes[pathname] = entry;
+    }
+    return { index: entry.index, byId: new Map(items.map((x) => [x.id, x])) };
+}
+
+/** Food and unit names for the review view (badges and suggestions). */
+export async function getMatchData() {
+    const [foods, units] = await Promise.all([getFoods(), getUnits()]);
+    return { foods: foods.map(toEntry), units: units.map(toEntry) };
+}
+
+async function findUnit(name: string): Promise<Named | undefined> {
+    const { index, byId } = await indexFor("/api/units");
+    const hit = lookup(index, name);
+    return hit ? byId.get(hit.id) : undefined;
 }
 
 async function findFood(name: string): Promise<Named | undefined> {
     const n = norm(name);
     if (!n) return undefined;
+    try {
+        const { index, byId } = await indexFor("/api/foods");
+        const hit = lookup(index, name);
+        if (hit) return byId.get(hit.id);
+    } catch (e) {
+        console.warn("Could not load Mealie foods", e);
+    }
+    // fallback for foods created after the list was cached
     const body = await mealieJson<{ items: Named[] }>(
         `/api/foods?search=${encodeURIComponent(name.trim())}&perPage=30&page=1`,
     );
@@ -79,16 +115,14 @@ async function findFood(name: string): Promise<Named | undefined> {
 
 /** Marks which foods / units already exist in Mealie (for the "vorhanden" / "neu" badges). */
 export async function matchIngredients(ingredients: Ingredient[]): Promise<Ingredient[]> {
-    let units: Named[] = [];
-    try {
-        units = await getUnits();
-    } catch (e) {
-        console.warn("Could not load Mealie units", e);
-    }
     const out: Ingredient[] = [];
     for (const ing of ingredients) {
         const copy = { ...ing };
-        copy.unitId = ing.unit ? matchUnit(units, ing.unit)?.id ?? null : null;
+        try {
+            copy.unitId = ing.unit ? (await findUnit(ing.unit))?.id ?? null : null;
+        } catch {
+            copy.unitId = null;
+        }
         try {
             copy.foodId = ing.food ? (await findFood(ing.food))?.id ?? null : null;
         } catch {
@@ -150,13 +184,13 @@ export function recipeUrl(slug: string) {
 
 async function ensureUnit(name: string): Promise<Named | null> {
     if (!name?.trim()) return null;
-    const found = matchUnit(await getUnits(), name);
+    const found = await findUnit(name);
     if (found) return found;
     const created = await mealieJson<Named>("/api/units", {
         method: "POST",
         body: JSON.stringify({ name: name.trim() }),
     });
-    forget("/api/units");
+    remember("/api/units", created);
     return created;
 }
 
@@ -164,7 +198,9 @@ async function ensureFood(name: string): Promise<Named | null> {
     if (!name?.trim()) return null;
     const found = await findFood(name);
     if (found) return found;
-    return mealieJson<Named>("/api/foods", { method: "POST", body: JSON.stringify({ name: name.trim() }) });
+    const created = await mealieJson<Named>("/api/foods", { method: "POST", body: JSON.stringify({ name: name.trim() }) });
+    remember("/api/foods", created);
+    return created;
 }
 
 function formatQty(q: number | null) {

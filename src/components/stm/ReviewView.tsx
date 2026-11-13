@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { type MatchEntry, buildIndex, lookup } from '@/lib/stm/match';
 import type { DraftRecipe, Ingredient, Job } from '@/lib/stm/types';
 import { useT } from './i18n';
 import { IconPlus, IconSpin, IconTrash, IconX, daysOld, imageUrl, sourceLabel } from './ui';
@@ -35,6 +36,9 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
     const [qtyDraft, setQtyDraft] = useState<string[]>([]);
     const [imageIndex, setImageIndex] = useState(0);
     const [meta, setMeta] = useState<Meta>({ tags: [], categories: [] });
+    const [matchData, setMatchData] = useState<{ foods: MatchEntry[]; units: MatchEntry[] } | null>(null);
+    const foodIndex = useMemo(() => (matchData ? buildIndex(matchData.foods) : null), [matchData]);
+    const unitIndex = useMemo(() => (matchData ? buildIndex(matchData.units) : null), [matchData]);
     const [hint, setHint] = useState('');
     const [busy, setBusy] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -42,6 +46,10 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
     const t = useT();
 
     useEffect(() => {
+        fetch('/api/match')
+            .then((r) => r.json())
+            .then((m) => Array.isArray(m.foods) && m.foods.length > 0 && setMatchData({ foods: m.foods, units: m.units || [] }))
+            .catch(() => undefined);
         fetch('/api/meta')
             .then((r) => r.json())
             .then((m) => setMeta({ tags: m.tags || [], categories: m.categories || [] }))
@@ -96,6 +104,11 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
             return { ...r, ingredients };
         });
     const tagOptions = Array.from(new Set([...meta.tags, ...recipe.tags]));
+    // live check against Mealie (falls back to the server's match when the list could not be loaded)
+    const foodExists = (ing: Ingredient) => (foodIndex ? Boolean(lookup(foodIndex, ing.food)) : Boolean(ing.foodId));
+    const unitExists = (ing: Ingredient) => !ing.unit || (unitIndex ? Boolean(lookup(unitIndex, ing.unit)) : Boolean(ing.unitId));
+    const newFoods = recipe.ingredients.filter((i) => i.food.trim() && !foodExists(i)).length;
+    const newUnits = recipe.ingredients.filter((i) => !unitExists(i)).length;
 
     const post = async (action: string, body: unknown) => {
         setBusy(action);
@@ -301,11 +314,29 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
                                             setIng(n, { quantity: parseNum(v) });
                                         }}
                                     />
-                                    <input className='stm-input' aria-label={`${t('review.unit')} ${n + 1}`} value={ing.unit ?? ''} onChange={(e) => setIng(n, { unit: e.target.value || null, unitId: null })} />
-                                    <input className='stm-input' aria-label={`${t('review.food')} ${n + 1}`} value={ing.food} onChange={(e) => setIng(n, { food: e.target.value, foodId: null })} />
+                                    <input
+                                        className={`stm-input${unitExists(ing) ? '' : ' stm-input-new'}`}
+                                        list='stm-units'
+                                        aria-label={`${t('review.unit')} ${n + 1}`}
+                                        title={unitExists(ing) ? undefined : t('review.newUnit')}
+                                        value={ing.unit ?? ''}
+                                        onChange={(e) => setIng(n, { unit: e.target.value || null, unitId: null })}
+                                    />
+                                    <input
+                                        className={`stm-input${!ing.food.trim() || foodExists(ing) ? '' : ' stm-input-new'}`}
+                                        list='stm-foods'
+                                        aria-label={`${t('review.food')} ${n + 1}`}
+                                        title={foodExists(ing) ? undefined : t('review.newFood')}
+                                        value={ing.food}
+                                        onChange={(e) => setIng(n, { food: e.target.value, foodId: null })}
+                                    />
                                     <input className='stm-input stm-col-note' aria-label={`${t('review.note')} ${n + 1}`} value={ing.note ?? ''} onChange={(e) => setIng(n, { note: e.target.value || null })} />
-                                    <span className='stm-badge stm-col-badge' style={{ alignSelf: 'center', color: ing.foodId ? 'var(--ok)' : 'var(--warn)' }}>
-                                        {ing.foodId ? t('review.exists') : t('review.new')}
+                                    <span
+                                        className='stm-badge stm-col-badge'
+                                        title={foodExists(ing) ? undefined : t('review.newFood')}
+                                        style={{ alignSelf: 'center', color: foodExists(ing) ? 'var(--ok)' : 'var(--warn)' }}
+                                    >
+                                        {foodExists(ing) ? t('review.exists') : t('review.new')}
                                     </span>
                                     <button
                                         type='button'
@@ -326,6 +357,25 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
                         >
                             <IconPlus /> {t('review.addIngredient')}
                         </button>
+                        {(newFoods > 0 || newUnits > 0) && (
+                            <p className='stm-small' style={{ margin: '10px 0 0' }}>
+                                <span style={{ color: 'var(--warn)', fontWeight: 600 }}>{t('review.newSummary', { f: newFoods, u: newUnits })}</span> {t('review.newSummaryHint')}
+                            </p>
+                        )}
+                        {matchData && (
+                            <>
+                                <datalist id='stm-foods'>
+                                    {matchData.foods.map((f) => (
+                                        <option key={f.id} value={f.name} />
+                                    ))}
+                                </datalist>
+                                <datalist id='stm-units'>
+                                    {matchData.units.map((u) => (
+                                        <option key={u.id} value={u.short || u.name} label={u.name} />
+                                    ))}
+                                </datalist>
+                            </>
+                        )}
                     </div>
 
                     <div>

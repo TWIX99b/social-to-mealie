@@ -266,3 +266,5 @@ button.stm-tag { cursor: pointer; min-height: 32px; }
 .stm textarea.stm-input[rows="2"] { min-height: calc(2 * 1.45em + 22px); }
 .stm textarea.stm-input[rows="3"] { min-height: calc(3 * 1.45em + 22px); }
 .stm textarea.stm-input[rows="4"] { min-height: calc(4 * 1.45em + 22px); }
+
+.stm-input.stm-input-new { border-color: var(--warn); border-style: dashed; }
