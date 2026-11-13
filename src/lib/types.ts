@@ -19,6 +19,8 @@ export type envTypes = {
     EXTRA_PROMPT: string;
     COOKIES: string;
     LOCAL_TRANSCRIPTION_MODEL: string;
+    ANTHROPIC_API_KEY: string;
+    ANTHROPIC_URL: string;
 };
 
 export type recipeResult = {

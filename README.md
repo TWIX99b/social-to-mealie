@@ -1,3 +1,8 @@
+> **Fork von [GerardPolloRebozado/social-to-mealie](https://github.com/GerardPolloRebozado/social-to-mealie) mit Claude-Anbindung.**
+> Ist `ANTHROPIC_API_KEY` gesetzt, schreibt Claude (Anthropic Messages API) das Rezept; `TEXT_MODEL` ist dann ein Claude-Modell (z. B. `claude-haiku-5-5` oder `claude-sonnet-5-5`).
+> Für die Transkription ohne OpenAI `LOCAL_TRANSCRIPTION_MODEL` setzen (z. B. `Xenova/whisper-small`). Optional: `ANTHROPIC_URL` (Standard `https://api.anthropic.com`).
+> Image: `ghcr.io/twix99b/social-to-mealie:latest` – wird bei jedem Push auf `main` neu gebaut.
+
 <p align="center">
 <img width="150" src="./public/android-chrome-512x512.png" alt="logo" />
 </p>

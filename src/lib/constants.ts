@@ -25,4 +25,8 @@ export const env: envTypes = {
     COOKIES: process.env.COOKIES?.trim() || ("" as string),
     LOCAL_TRANSCRIPTION_MODEL:
         process.env.LOCAL_TRANSCRIPTION_MODEL?.trim() || ("" as string),
+    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY?.trim() || ("" as string),
+    ANTHROPIC_URL: (
+        process.env.ANTHROPIC_URL?.trim() || "https://api.anthropic.com"
+    ).replace(/\/+$/, "") as string,
 };

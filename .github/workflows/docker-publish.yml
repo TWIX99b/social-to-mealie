@@ -1,8 +1,11 @@
 name: Build and Publish Docker Image
 
 on:
+    push:
+        branches: [main]
     release:
         types: [published]
+    workflow_dispatch:
 
 jobs:
     build:
@@ -12,29 +15,33 @@ jobs:
             packages: write
         steps:
             - name: Log in to GitHub Container Registry
-              uses: docker/login-action@v2
+              uses: docker/login-action@v3
               with:
                   registry: ghcr.io
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
 
             - name: Checkout code
-              uses: actions/checkout@v3
+              uses: actions/checkout@v4
 
             - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v2
+              uses: docker/setup-buildx-action@v3
 
             - name: Build and push Docker image
               run: |
                   REPO_NAME=${{ github.repository }}
                   # Convert repository name to lowercase
                   REPO_NAME=${REPO_NAME,,}
-                  VERSION_TAG=ghcr.io/${REPO_NAME}:${{ github.event.release.tag_name }}
                   LATEST_TAG=ghcr.io/${REPO_NAME}:latest
+                  SHA_TAG=ghcr.io/${REPO_NAME}:sha-${GITHUB_SHA::7}
+                  EXTRA_TAG=""
+                  if [ "${{ github.event_name }}" = "release" ]; then
+                    EXTRA_TAG="-t ghcr.io/${REPO_NAME}:${{ github.event.release.tag_name }}"
+                  fi
 
-                  # Build and push for multiple architectures with both tags
+                  # Homelab runs on amd64 only – keeps the build fast
                   docker buildx build \
-                    --platform linux/amd64,linux/arm64 \
+                    --platform linux/amd64 \
                     --push \
-                    -t $VERSION_TAG \
-                    -t $LATEST_TAG .
+                    -t $LATEST_TAG \
+                    -t $SHA_TAG $EXTRA_TAG .
