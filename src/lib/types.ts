@@ -21,6 +21,13 @@ export type envTypes = {
     LOCAL_TRANSCRIPTION_MODEL: string;
     ANTHROPIC_API_KEY: string;
     ANTHROPIC_URL: string;
+    DATA_DIR: string;
+    CLAUDE_MODEL_FAST: string;
+    CLAUDE_MODEL_SMART: string;
+    GOTIFY_URL: string;
+    GOTIFY_TOKEN: string;
+    APP_URL: string;
+    RETENTION_DAYS: number;
 };
 
 export type recipeResult = {

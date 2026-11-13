@@ -2,8 +2,16 @@ import {env} from "./constants";
 import {createOpenAI} from "@ai-sdk/openai";
 import {generateText, NoTranscriptGeneratedError, Output, transcribe} from "ai";
 import {z} from "zod";
-import {pipeline} from '@huggingface/transformers';
+import {pipeline, env as hfEnv} from '@huggingface/transformers';
+import path from 'path';
 import {WaveFile} from 'wavefile';
+
+// Keep downloaded Whisper models in the data volume so they survive container updates.
+try {
+    hfEnv.cacheDir = path.join(env.DATA_DIR, 'models');
+} catch {
+    /* ignore */
+}
 
 const client = createOpenAI({
     baseURL: env.OPENAI_URL,

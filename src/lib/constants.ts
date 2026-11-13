@@ -29,4 +29,12 @@ export const env: envTypes = {
     ANTHROPIC_URL: (
         process.env.ANTHROPIC_URL?.trim() || "https://api.anthropic.com"
     ).replace(/\/+$/, "") as string,
+    DATA_DIR: process.env.DATA_DIR?.trim() || "/app/data",
+    CLAUDE_MODEL_FAST:
+        process.env.CLAUDE_MODEL_FAST?.trim() || process.env.TEXT_MODEL?.trim() || "claude-haiku-5-5",
+    CLAUDE_MODEL_SMART: process.env.CLAUDE_MODEL_SMART?.trim() || "claude-sonnet-5-5",
+    GOTIFY_URL: (process.env.GOTIFY_URL?.trim() || "").replace(/\/+$/, ""),
+    GOTIFY_TOKEN: process.env.GOTIFY_TOKEN?.trim() || "",
+    APP_URL: (process.env.APP_URL?.trim() || "").replace(/\/+$/, ""),
+    RETENTION_DAYS: Number(process.env.RETENTION_DAYS || 10),
 };

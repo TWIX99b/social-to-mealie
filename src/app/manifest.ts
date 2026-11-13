@@ -2,17 +2,17 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
     return {
-        id: 'gerardPolloRebozado/social-to-mealie',
-        name: 'Social to Mealie',
+        id: 'twix99b/social-to-mealie',
+        name: 'Social → Mealie',
         categories: ['utilities', 'food-and-drink', 'recipe manager'],
-        short_name: 'Social to Mealie',
-        description: 'A web application that allows users to share recipes from social media platforms to Mealie.',
+        short_name: 'Social → Mealie',
+        description: 'Rezepte aus Reels, TikToks und Posts – geschrieben von Claude, gespeichert in Mealie.',
         start_url: '/',
-        lang: 'en',
+        lang: 'de',
         display: 'standalone',
         orientation: 'portrait',
-        background_color: '#000000',
-        theme_color: '#000000',
+        background_color: '#f5ece2',
+        theme_color: '#a6441d',
         icons: [
             {
                 src: '/android-chrome-192x192.png',

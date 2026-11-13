@@ -2,7 +2,7 @@ name: Build and Publish Docker Image
 
 on:
     push:
-        branches: [main]
+        branches: [main, redesign]
     release:
         types: [published]
     workflow_dispatch:
@@ -33,6 +33,10 @@ jobs:
                   # Convert repository name to lowercase
                   REPO_NAME=${REPO_NAME,,}
                   LATEST_TAG=ghcr.io/${REPO_NAME}:latest
+                  # Test branch builds :dev and never touches :latest
+                  if [ "${GITHUB_REF_NAME}" = "redesign" ]; then
+                    LATEST_TAG=ghcr.io/${REPO_NAME}:dev
+                  fi
                   SHA_TAG=ghcr.io/${REPO_NAME}:sha-${GITHUB_SHA::7}
                   EXTRA_TAG=""
                   if [ "${{ github.event_name }}" = "release" ]; then

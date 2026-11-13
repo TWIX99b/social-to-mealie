@@ -1,34 +1,33 @@
 import './globals.css';
-import { ThemeProvider } from '@//components/theme-provider';
-import type { Metadata } from 'next';
+import './stm.css';
+import type { Metadata, Viewport } from 'next';
+import { Fraunces, Inter } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getTranslations } from 'next-intl/server';
 import type React from 'react';
 
-export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('Metadata');
+const fraunces = Fraunces({ subsets: ['latin'], weight: ['500', '600', '700'], variable: '--font-fraunces', display: 'swap' });
+const inter = Inter({ subsets: ['latin'], weight: ['400', '500', '600'], variable: '--font-inter', display: 'swap' });
 
-  return {
-    title: 'Social to Mealie',
-    description: t('description'),
-  };
-}
+export const metadata: Metadata = {
+  title: 'Social → Mealie',
+  description: 'Rezepte aus Reels, TikToks und Posts – geschrieben von Claude, gespeichert in Mealie.',
+  appleWebApp: { capable: true, title: 'Social → Mealie', statusBarStyle: 'black-translucent' },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#a6441d',
+};
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const locale = await getLocale();
-
   return (
-    <>
-      <html lang={locale} suppressHydrationWarning>
-        <head />
-        <body>
-          <NextIntlClientProvider>
-            <ThemeProvider attribute='class' defaultTheme='system' enableSystem disableTransitionOnChange>
-              {children}
-            </ThemeProvider>
-          </NextIntlClientProvider>
-        </body>
-      </html>
-    </>
+    <html lang='de' className={`${fraunces.variable} ${inter.variable}`} suppressHydrationWarning>
+      <head />
+      <body style={{ margin: 0 }}>
+        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+      </body>
+    </html>
   );
 }

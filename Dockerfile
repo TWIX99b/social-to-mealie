@@ -66,6 +66,11 @@ RUN if [ -f /venv/bin/yt-dlp ]; then \
         ln -sf /venv/bin/yt-dlp /app/yt-dlp; \
     fi
 
+# Jobs, drafts, settings, images and the Whisper model cache (mount a volume here)
+RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
+ENV DATA_DIR=/app/data
+VOLUME ["/app/data"]
+
 USER nextjs
 
 EXPOSE 3000
