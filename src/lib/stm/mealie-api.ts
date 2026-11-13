@@ -230,7 +230,7 @@ export async function saveRecipe(
 }
 
 async function fillRecipe(slug: string, url: string, recipe: DraftRecipe, imageFile: string | null): Promise<string | undefined> {
-    const recipeIngredient = [];
+    const recipeIngredient: { referenceId: string; [key: string]: unknown }[] = [];
     for (const ing of recipe.ingredients) {
         const unit = ing.unit ? await ensureUnit(ing.unit) : null;
         const food = ing.food ? await ensureFood(ing.food) : null;
