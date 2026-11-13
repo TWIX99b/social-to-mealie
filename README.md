@@ -1,166 +1,169 @@
-> **Fork von [GerardPolloRebozado/social-to-mealie](https://github.com/GerardPolloRebozado/social-to-mealie) mit Claude-Anbindung.**
-> Ist `ANTHROPIC_API_KEY` gesetzt, schreibt Claude (Anthropic Messages API) das Rezept; `TEXT_MODEL` ist dann ein Claude-Modell (z. B. `claude-haiku-5-5` oder `claude-sonnet-5-5`).
-> Für die Transkription ohne OpenAI `LOCAL_TRANSCRIPTION_MODEL` setzen (z. B. `Xenova/whisper-small`). Optional: `ANTHROPIC_URL` (Standard `https://api.anthropic.com`).
-> Image: `ghcr.io/twix99b/social-to-mealie:latest` – wird bei jedem Push auf `main` neu gebaut.
+**English** · [Deutsch](README.de.md)
 
 <p align="center">
-<img width="150" src="./public/android-chrome-512x512.png" alt="logo" />
+  <img width="120" src="./public/icon.svg" alt="Social to Mealie logo" />
 </p>
 
-# Social Media to Mealie
+<h1 align="center">Social → Mealie</h1>
 
-Have you found a recipe on social media and don’t want to write it out yourself? This tool lets you import recipes from
-videos directly into [Mealie](https://github.com/mealie-recipes/mealie).
+<p align="center">
+  Turn recipe reels, TikToks and posts into clean <a href="https://github.com/mealie-recipes/mealie">Mealie</a> recipes – written by Claude, reviewed by you.
+</p>
 
-**Tested social media platforms:**
+> [!NOTE]
+> This is a fork of [GerardPolloRebozado/social-to-mealie](https://github.com/GerardPolloRebozado/social-to-mealie).
+> It replaces the OpenAI flow with **Claude (Anthropic API)**, runs every link as a **background job** and comes with a completely new interface.
+> Image: `ghcr.io/twix99b/social-to-mealie:latest`
 
-- Instagram
-- TikTok
-- Facebook
-- YouTube Shorts
-- Pinterest
+![Live view while Claude writes the recipe](docs/screenshots/live-desktop.webp)
 
-Other sites may work as well, since the tool uses `yt-dlp` to download videos. If you encounter issues with other
-websites, please open an issue. If you have an error with any of this sites, please ensure you have the latest version of yt-dlp as usually this website make changes that break yt-dlp.
-You can do that by removing the container so it fetches yt-dlp again.
+## What it does
 
-> **Note:** If you receive a `BAD_RECIPE` error, it may be due to Mealie’s recipe parsing. If you find a better prompt
-> or solution, feel free to open an issue or PR!
+Paste a link (or share it from your phone). The app downloads the video and images, transcribes the audio locally with Whisper and lets Claude write a structured recipe – you watch title, ingredients and steps appear live. Then you review the draft and save it to Mealie with one tap.
 
-## Features
+- **Live view "So entsteht das Rezept"** – step list with timings, collapsible transcript, the recipe streams in while Claude writes
+- **Background jobs with a queue** – close the page, the job keeps running; [Gotify](https://gotify.net) tells you when a draft is ready or something failed
+- **Review before saving** – everything is editable, pick the cover image from the post, or let Claude rewrite it with a hint (uses the bigger model)
+- **Fits your Mealie** – ingredients are split into quantity / unit / food / note and matched against your existing foods and units; tags and categories are only picked from the ones you already have
+- **Duplicate check** – a link that is already in Mealie is recognised before Claude is asked (no cost)
+- **House rules** – German, metric, EL/TL, oven type, plus your own free-text rules and model choice, stored on the server for everyone
+- **Share from the phone** – iOS Shortcut via the API, Android via the PWA share target
+- **Four themes** (Küche, Homelab, Kräuter, Nacht), each light / dark / auto, saved per device
+- History is kept for 10 days, drafts stay until you handle them
 
-- Import posts into Mealie with a link and a click
-- [iOS Shortcut v0.4](https://www.icloud.com/shortcuts/2bbc4c037d6a4383bc5ff6e60715f2dc) for easy importing
-- PWA support, to allow sharing links to the app from mobile devices for quick importing.
+The interface is in German.
 
-## Screenshot
+## Screenshots
 
-![Screenshot of the web interface](./public/screenshot.png "Screenshot of the web interface")
+| Review a draft | Drafts |
+| --- | --- |
+| ![Review view](docs/screenshots/review-desktop.webp) | ![Drafts](docs/screenshots/drafts-desktop.webp) |
+| **History** | **Settings** |
+| ![History](docs/screenshots/history-desktop.webp) | ![Settings](docs/screenshots/settings-desktop.webp) |
+
+<p align="center"><img src="docs/screenshots/mobile.webp" alt="Phone: live view, review and drafts" width="860" /></p>
+
+<sub>Screenshots use demo data.</sub>
+
+## How it works
+
+```
+link ─► duplicate check (Mealie orgURL) ─► yt-dlp download + images ─► Whisper (local) ─► Claude (streamed tool call)
+     ─► match foods / units ─► draft ─► review ─► Mealie (recipe, structured ingredients, image)
+```
+
+Jobs, drafts, settings and images live in one JSON store in `/app/data` (mount it as a volume). Jobs that were interrupted by a restart go back into the queue.
 
 ## Requirements
 
-- [Mealie 1.9.0+](https://github.com/mealie-recipes/mealie) with AI provider
-  configured ([docs](https://docs.mealie.io/documentation/getting-started/installation/open-ai/))
-- [Docker](https://docs.docker.com/engine/install/)
+- [Mealie](https://github.com/mealie-recipes/mealie) v2 or newer and an API token (Profile → API Tokens). Mealie's own AI provider is **not** needed.
+- An [Anthropic API key](https://console.anthropic.com/)
+- Docker
 
-## Deployment
+## Quick start
 
-<details open>
-    <summary>Docker Compose</summary>
-
-1. Create a `docker-compose.yml` file based on the [docker-compose.example.yml](https://github.com/GerardPolloRebozado/social-to-mealie/blob/main/docker-compose.example.yml)
-   in the repo and fill in the required environment variables.
-   If you prefer having them in a separate file you can create a `.env` file based on the [example.env](https://github.com/GerardPolloRebozado/social-to-mealie/blob/main/example.env).
-
-2. **Start the service with Docker Compose:**
-
-    ```sh
-    docker-compose up -d
-    ```
-
-    </details>
-
-<details>
-    <summary>Docker Run</summary>
-
-```sh
-docker run --restart unless-stopped --name social-to-mealie \
-  -e OPENAI_URL=https://api.openai.com/v1 \
-  -e OPENAI_API_KEY=sk-... \
-  -e TRANSCRIPTION_MODEL=whisper-1 \
-  -e MEALIE_URL=https://mealie.example.com \
-  -e MEALIE_API_KEY=ey... \
-  -e MEALIE_GROUP_NAME=home \
-  -p 4000:3000 \
-  --security-opt no-new-privileges:true \
-  ghcr.io/gerardpollorebozado/social-to-mealie:latest
+```yaml
+services:
+  social-to-mealie:
+    image: ghcr.io/twix99b/social-to-mealie:latest
+    container_name: social-to-mealie
+    restart: unless-stopped
+    ports:
+      - "4000:3000"
+    volumes:
+      - ./data:/app/data                 # jobs, drafts, settings, images, Whisper model
+      - ./cookies.txt:/app/cookies.txt   # optional, for Instagram / Facebook
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - LOCAL_TRANSCRIPTION_MODEL=Xenova/whisper-small
+      - MEALIE_URL=http://mealie:9000
+      - EXTERNAL_MEALIE_URL=https://mealie.example.com
+      - MEALIE_API_KEY=${MEALIE_API_KEY}
+      - GOTIFY_URL=https://gotify.example.com      # optional
+      - GOTIFY_TOKEN=${GOTIFY_TOKEN}               # optional
+      - APP_URL=https://social-to-mealie.example.com
+    security_opt:
+      - no-new-privileges:true
 ```
 
-</details>
+The container runs as user `1001`, so the data folder must be writable for it:
 
-<details>
-    <summary>Local Development</summary>
+```sh
+mkdir -p data && sudo chown -R 1001:1001 data
+touch cookies.txt && sudo chown 1001:1001 cookies.txt
+docker compose up -d
+```
 
-1. Clone the repository and install dependencies:
+The first link with audio takes a few minutes longer, because the Whisper model (about 250 MB for `whisper-small`) is downloaded once into `data/models`.
 
-    ```sh
-    git clone https://github.com/GerardPolloRebozado/social-to-mealie.git
-    cd social-to-mealie
-    npm install
-    ```
+## Environment variables
 
-2. Create a `.env` file based on `example.env` and fill in your values:
+| Variable | Required | Default | Description |
+| --- | --- | --- | --- |
+| `ANTHROPIC_API_KEY` | yes | – | Anthropic API key; Claude writes the recipes |
+| `MEALIE_URL` | yes | – | URL the container uses to reach Mealie |
+| `MEALIE_API_KEY` | yes | – | Mealie API token (without quotes) |
+| `EXTERNAL_MEALIE_URL` | no | `MEALIE_URL` | Mealie URL used for "open in Mealie" links |
+| `MEALIE_GROUP_NAME` | no | `home` | Mealie group, used in recipe links |
+| `LOCAL_TRANSCRIPTION_MODEL` | recommended | – | Hugging Face ONNX Whisper model, e.g. `Xenova/whisper-small` or `Xenova/whisper-base` |
+| `CLAUDE_MODEL_FAST` | no | `claude-haiku-5-5` | Model for the first draft (setting "Automatisch" / "Haiku") |
+| `CLAUDE_MODEL_SMART` | no | `claude-sonnet-5-5` | Model for "Neu schreiben" (setting "Automatisch" / "Sonnet") |
+| `ANTHROPIC_URL` | no | `https://api.anthropic.com` | Alternative endpoint / proxy |
+| `GOTIFY_URL`, `GOTIFY_TOKEN` | no | – | Push notifications for "ready to review", saved and errors |
+| `APP_URL` | no | – | Public URL of this app; notifications link to the draft |
+| `DATA_DIR` | no | `/app/data` | Where jobs, images and the model cache are stored |
+| `RETENTION_DAYS` | no | `10` | How long history entries are kept |
+| `COOKIES` | no | – | Cookie string for yt-dlp (`NAME=VALUE`); alternatively mount `cookies.txt` |
+| `YTDLP_VERSION` | no | `latest` | yt-dlp version installed at start |
 
-    ```sh
-    cp example.env .env
-    ```
+> [!WARNING]
+> `TEXT_MODEL` from the original project is still read as a fallback for `CLAUDE_MODEL_FAST`. If it still contains an OpenAI model name, remove it.
 
-3. Create an empty `cookies.txt` file (required by the volume mount if defined in `docker-compose.yml`):
+## Sharing from the phone
 
-    ```sh
-    touch cookies.txt
-    ```
+**iPhone – Shortcut "An Mealie"**
 
-4. Build and start the container locally:
+1. Create a new shortcut, enable *Show in Share Sheet*, input: URLs and text.
+2. Action *Get Contents of URL*: `https://<your-app>/api/jobs`
+3. Method `POST`, request body `JSON`, field `url` (text) = *Shortcut Input*.
+4. Optional: field `direct` (boolean) = true to save without review.
+5. Optional: *Show Notification* "Läuft – Gotify meldet sich".
 
-    ```sh
-    docker compose build
-    docker compose up -d
-    ```
+**Android** – open the app in Chrome → menu → *Install app*. "Social → Mealie" then appears in the share menu.
 
-    The app will be available at `http://localhost:4000`.
+## API
 
-5. To view logs:
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/jobs` | New job(s). JSON `{ "url": "…" }`, `{ "urls": [] }` or `{ "text": "…" }` (all links in the text are used), optional `"direct": true`. Plain text bodies work as well. |
+| `GET` | `/api/jobs` | All jobs |
+| `GET` | `/api/jobs/:id` | One job |
+| `DELETE` | `/api/jobs/:id` | Discard a draft or history entry |
+| `POST` | `/api/jobs/:id/save` | Save to Mealie, body `{ recipe?, imageIndex? }` |
+| `POST` | `/api/jobs/:id/rewrite` | Let Claude rewrite, body `{ hint?, recipe? }` |
+| `POST` | `/api/jobs/:id/retry` / `force` | Try again / create despite duplicate |
+| `GET` | `/api/events` | Server-sent events (snapshot, job changes, live recipe) |
+| `GET`/`PUT` | `/api/settings` | House rules and model choice |
 
-    ```sh
-    docker logs -f social-to-mealie
-    ```
+The original endpoint `/api/get-url` still exists for old shortcuts.
 
-</details>
+> [!IMPORTANT]
+> The app has no login. Anyone who can reach it can create recipes in your Mealie and use your Anthropic credit. Keep it in your home network or behind a reverse proxy with access control (VPN, IP allow list, SSO).
 
-> [!TIP]
-> In order to be able to install the PWA the app needs to have HTTPS, you can use a reverse proxy like caddy or nginx,
-> but be careful as opening this app to the internet as it will allow anyone to submit recipes to your Mealie instance.
-> I recommend adding a small log in or IP whitelist
+## Supported platforms
 
-## Environment Variables
+Instagram, TikTok, YouTube (Shorts), Facebook and Pinterest are tested. Anything [yt-dlp](https://github.com/yt-dlp/yt-dlp) can download should work. Instagram and Facebook often need cookies (`cookies.txt`). If a platform stops working, recreate the container so the latest yt-dlp is installed.
 
-| Variable                  | Required | Default                     | Description                                                                                                                                  |
-| ------------------------- | -------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| OPENAI_URL                | Yes      | `https://api.openai.com/v1` | URL for the OpenAI API or a compatible one                                                                                                   |
-| OPENAI_API_KEY            | Yes      | —                           | API key for OpenAI or a compatible one                                                                                                       |
-| TRANSCRIPTION_MODEL       | No       | `whisper-1`                 | Whisper model to use, required when the local one is not filled                                                                              |
-| LOCAL_TRANSCRIPTION_MODEL | No       | —                           | Model ID from hugging face to use for local audio to text transcription, required when the provider doesn't support transcriptions API       |
-| TEXT_MODEL                | Yes      | `gpt-5-mini`                | Text model to use for recipe generation                                                                                                      |
-| MEALIE_URL                | Yes      | `http://localhost:9000`     | URL of your Mealie instance                                                                                                                  |
-| EXTERNAL_MEALIE_URL       | No       | -                           | Optional, this will be the URL used when showing the result of the recipe, not needed if the `MEALIE_URL` is already a public accessible URL |
-| MEALIE_API_KEY            | Yes      | —                           | API key for Mealie                                                                                                                           |
-| MEALIE_GROUP_NAME         | No       | `home`                      | Mealie group name                                                                                                                            |
-| EXTRA_PROMPT              | No       | —                           | Additional instructions for AI, such as language translation                                                                                 |
-| YTDLP_VERSION             | No       | `latest`                    | Version of yt-dlp to use                                                                                                                     |
-| PORT                      | No       | `4000`                      | Host port to expose the app on                                                                                                               |
-| COOKIES                   | No       | —                           | Cookies string for yt-dlp to access protected content `NAME=VALUE`                                                                           |
+## Development
 
-## Tested AI providers compatibility
+```sh
+pnpm install
+cp example.env .env   # fill in your values
+pnpm dev
+```
 
-- OpenAI
-- GroqAI
+Pushes to `main` build `:latest`, pushes to the `redesign` branch build `:dev`.
 
-## Partial support
+## Credits & license
 
-Because theese providers don't support the transcriptions API it requires LOCAL_TRANSCRIPTION_MODEL to be set, recommended model: `Xenova/whisper-base`, you can use any model that is compatible with the ONNX runtime from hugging face
-
-- llmstudio
-- ollama
-
-Some recommended models for local AI are:
-
-- `qwen3-vl:8b`
-- `gemma-3-12b`
-
-If you want to use another model the model needs to have tools support and vision capabilities.
-If you want better results use the same models but in larger variants.
-
-It can work with any other provider that is compatible with the OpenAI API, if you find any issues please open an issue.
-
-[![Star History Chart](https://app.repohistory.com/api/svg?repo=GerardPolloRebozado/social-to-mealie&type=Date&background=0D1117&color=f86262)](https://app.repohistory.com/star-history)
+Based on [social-to-mealie](https://github.com/GerardPolloRebozado/social-to-mealie) by GerardPolloRebozado. Licensed under the [GPL-3.0](LICENSE).

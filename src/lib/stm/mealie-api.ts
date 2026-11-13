@@ -132,7 +132,9 @@ export async function findDuplicate(url: string) {
                     url: recipeUrl(hit.slug),
                 };
             }
-        } catch (e) {
+        } catch (e: any) {
+            // a wrong token should stop the job before Claude is paid for; other errors are not fatal
+            if (/→ 40[13]/.test(String(e?.message))) throw e;
             console.warn("Duplicate check failed", e);
             return undefined;
         }
@@ -180,6 +182,17 @@ export async function saveRecipe(
         body: JSON.stringify({ name: recipe.name.trim() || "Neues Rezept" }),
     });
 
+    try {
+        await fillRecipe(slug, url, recipe, imageFile);
+    } catch (e) {
+        // do not leave an empty recipe behind – a retry would otherwise create "name-1"
+        await mealie(`/api/recipes/${encodeURIComponent(slug)}`, { method: "DELETE" }).catch(() => undefined);
+        throw e;
+    }
+    return { slug, url: recipeUrl(slug) };
+}
+
+async function fillRecipe(slug: string, url: string, recipe: DraftRecipe, imageFile: string | null) {
     const recipeIngredient = [];
     for (const ing of recipe.ingredients) {
         const unit = ing.unit ? await ensureUnit(ing.unit) : null;
@@ -236,6 +249,4 @@ export async function saveRecipe(
             console.warn("Image upload failed", e);
         }
     }
-
-    return { slug, url: recipeUrl(slug) };
 }

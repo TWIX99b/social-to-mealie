@@ -231,7 +231,16 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
 
                     <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         <span className='stm-label'>Titel</span>
-                        <input className='stm-input stm-serif' style={{ fontSize: 22, fontWeight: 650 }} value={recipe.name} onChange={(e) => set('name', e.target.value)} />
+                        <textarea
+                            className='stm-input stm-serif'
+                            rows={1}
+                            style={{ fontSize: 22, fontWeight: 650 }}
+                            value={recipe.name}
+                            onChange={(e) => set('name', e.target.value.replace(/\n/g, ' '))}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') e.preventDefault();
+                            }}
+                        />
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         <span className='stm-label'>Beschreibung</span>

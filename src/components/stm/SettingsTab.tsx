@@ -174,10 +174,11 @@ export function SettingsTab({ theme, mode, setTheme, setMode }: Props) {
                         Vom Handy teilen
                     </h3>
                     <p style={{ margin: '0 0 6px', fontWeight: 600 }}>iPhone – Kurzbefehl „An Mealie“</p>
-                    <ol className='stm-small' style={{ margin: '0 0 12px', paddingLeft: 18, lineHeight: 1.6 }}>
+                    <ol className='stm-small' style={{ margin: '0 0 12px', paddingLeft: 20, lineHeight: 1.6, listStyle: 'decimal' }}>
                         <li>Kurzbefehle → neuer Kurzbefehl, „Im Share-Sheet anzeigen“ an, Eingabe: URLs und Text.</li>
                         <li>
-                            Aktion „Inhalte von URL abrufen“: <code style={{ wordBreak: 'break-all' }}>{origin}/api/jobs</code>
+                            Aktion „Inhalte von URL abrufen“ mit
+                            <code className='stm-code'>{origin}/api/jobs</code>
                         </li>
                         <li>Methode POST, Anfragetext JSON, Feld <code>url</code> = Kurzbefehleingabe.</li>
                         <li>Optional Feld <code>direct</code> = Ja für direktes Speichern.</li>

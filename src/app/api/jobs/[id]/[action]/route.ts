@@ -1,6 +1,6 @@
 import { getJob } from "@/lib/stm/store";
 import type { DraftRecipe } from "@/lib/stm/types";
-import { requeue, saveJob } from "@/lib/stm/worker";
+import { friendlyMealieError, requeue, saveJob } from "@/lib/stm/worker";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -54,7 +54,7 @@ export async function POST(req: Request, { params }: Ctx) {
                 const saved = await saveJob(id, recipe, Number(body.imageIndex) || 0);
                 return Response.json({ job: saved });
             } catch (e: any) {
-                return Response.json({ error: `Speichern in Mealie fehlgeschlagen: ${e?.message || e}` }, { status: 502 });
+                return Response.json({ error: `Speichern in Mealie fehlgeschlagen: ${friendlyMealieError(e)}` }, { status: 502 });
             }
         }
         case "retry":

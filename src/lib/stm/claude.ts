@@ -157,7 +157,7 @@ export async function writeRecipeWithClaude(
             "x-api-key": env.ANTHROPIC_API_KEY,
             "anthropic-version": "2023-06-01",
         },
-        signal: AbortSignal.timeout(180_000),
+        signal: AbortSignal.timeout(300_000),
         body: JSON.stringify({
             model: ctx.model,
             max_tokens: 8192,

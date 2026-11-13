@@ -267,7 +267,7 @@ export function StmApp() {
                 {tabs.map(([key, label, count]) => (
                     <button key={key} type='button' aria-current={tab === key && !reviewId ? 'page' : undefined} onClick={() => go(key)}>
                         <span>{label}</span>
-                        <span style={{ fontSize: 11, minHeight: 14 }}>{count > 0 ? count : ''}</span>
+                        {count > 0 && <span className='stm-tabbar-count'>{count}</span>}
                     </button>
                 ))}
             </nav>

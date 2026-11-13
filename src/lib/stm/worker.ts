@@ -24,14 +24,31 @@ export function detectPlatform(url: string): string {
     }
 }
 
+const TRACKING = /^(utm_.*|igsh|igshid|si|fbclid|gclid|_t|_r|share_app_id|share_item_id|is_from_webapp|sender_device|feature|mibextid|rdid|ref|ref_src)$/i;
+
+/** Drops tracking parameters so the same post is recognised again (duplicate check, orgURL). */
+export function cleanUrl(raw: string): string {
+    try {
+        const u = new URL(raw);
+        for (const key of [...u.searchParams.keys()]) if (TRACKING.test(key)) u.searchParams.delete(key);
+        u.hash = "";
+        return u.toString();
+    } catch {
+        return raw;
+    }
+}
+
 /** Pull every http(s) URL out of a text (share sheets often add extra words). */
 export function extractUrls(text: string): string[] {
     const found = text.match(/https?:\/\/[^\s<>"']+/gi) || [];
-    const urls = found.map((u) => u.replace(/[),.;!?]+$/, ""));
+    const urls = found.map((u) => cleanUrl(u.replace(/[),.;!?]+$/, "")));
     return [...new Set(urls)];
 }
 
 export function createJob(url: string, opts: { source: string; direct: boolean }): Job {
+    // the same link shared twice while it is still waiting, running or in review → reuse that job
+    const open = listJobs().find((j) => j.url === url && ["queued", "downloading", "transcribing", "writing", "draft", "saving"].includes(j.status));
+    if (open) return open;
     const now = new Date().toISOString();
     const job: Job = {
         id: randomUUID().slice(0, 12),
@@ -100,6 +117,13 @@ function friendlyDownloadError(job: Job): string {
         return `${job.platform} hat den Post nicht herausgegeben – meist fehlen Cookies oder sie sind abgelaufen (cookies.txt). Ist der Post privat oder gelöscht?`;
     }
     return "Video bzw. Post konnte nicht geladen werden – ist der Link öffentlich und wird die Plattform unterstützt?";
+}
+
+export function friendlyMealieError(e: any): string {
+    const msg = String(e?.message || e);
+    if (/→ 40[13]/.test(msg)) return "Mealie lehnt den API-Token ab – MEALIE_API_KEY prüfen (Profil → API-Tokens).";
+    if (/fetch failed|ECONNREFUSED|ENOTFOUND|timeout/i.test(msg)) return "Mealie ist nicht erreichbar – MEALIE_URL prüfen.";
+    return msg;
 }
 
 function modelFor(job: Job): string {
@@ -209,7 +233,7 @@ async function processJob(id: string) {
                 const saved = await saveJob(id, recipe, 0);
                 await notify("Rezept gespeichert", `${recipe.name} ist in Mealie.`, saved?.mealieUrl || "/?tab=verlauf");
             } catch (e: any) {
-                await notify("Speichern fehlgeschlagen", `${recipe.name}: ${e?.message || e}`, `/?draft=${id}`);
+                await notify("Speichern fehlgeschlagen", `${recipe.name}: ${friendlyMealieError(e)}`, `/?draft=${id}`);
             }
         } else {
             updateJob(id, { status: "draft" });
@@ -217,7 +241,13 @@ async function processJob(id: string) {
         }
     } catch (e: any) {
         console.error("Job failed", id, e);
-        const message = e?.message || "Unbekannter Fehler";
+        const raw = String(e?.message || "");
+        const message =
+            e?.name === "TimeoutError" || e?.name === "AbortError"
+                ? "Zeitüberschreitung – bitte nochmal versuchen."
+                : raw.startsWith("Mealie")
+                  ? friendlyMealieError(e)
+                  : raw || "Unbekannter Fehler";
         updateJob(id, { status: "failed", error: message });
         await notify("Rezept fehlgeschlagen", message, "/?tab=verlauf");
     }
@@ -227,7 +257,7 @@ export async function saveJob(id: string, recipe: DraftRecipe, imageIndex: numbe
     const job = getJob(id);
     if (!job) throw new Error("Auftrag nicht gefunden");
     const t0 = Date.now();
-    updateJob(id, { status: "saving", recipe, stageStartedAt: new Date().toISOString() });
+    updateJob(id, { status: "saving", recipe, error: undefined, stageStartedAt: new Date().toISOString() });
     try {
         const file = job.imageCount > 0 ? imagePath(id, Math.min(Math.max(0, imageIndex), job.imageCount - 1)) : null;
         const result = await saveRecipe(job.url, recipe, file);
@@ -235,10 +265,11 @@ export async function saveJob(id: string, recipe: DraftRecipe, imageIndex: numbe
             status: "saved",
             mealieSlug: result.slug,
             mealieUrl: result.url,
+            error: undefined,
             timings: { ...job.timings, save: Date.now() - t0 },
         });
     } catch (e: any) {
-        updateJob(id, { status: "draft", error: `Speichern in Mealie fehlgeschlagen: ${e?.message || e}` });
+        updateJob(id, { status: "draft", error: `Speichern in Mealie fehlgeschlagen: ${friendlyMealieError(e)}` });
         throw e;
     }
 }

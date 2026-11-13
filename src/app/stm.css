@@ -237,10 +237,13 @@ button.stm-tag { cursor: pointer; min-height: 32px; }
     .stm-ing-grid .stm-col-note, .stm-ing-grid .stm-col-badge { display: none; }
     .stm-tabbar {
         display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
-        padding: 8px 10px calc(10px + env(safe-area-inset-bottom)); background: var(--glass2);
+        padding: 8px 10px calc(10px + env(safe-area-inset-bottom)); background: color-mix(in srgb, var(--bg) 88%, transparent);
         -webkit-backdrop-filter: blur(18px) saturate(140%); backdrop-filter: blur(18px) saturate(140%); border-top: 1px solid var(--border);
     }
-    .stm-tabbar button { font: inherit; font-size: 12px; font-weight: 600; min-height: 48px; border: none; border-radius: 14px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: transparent; color: var(--muted); }
+    .stm-tabbar button { font: inherit; font-size: 12px; font-weight: 600; min-height: 48px; padding: 0 2px; border: none; border-radius: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; background: transparent; color: var(--muted); white-space: nowrap; }
+    .stm-tabbar-count { font-size: 11px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: var(--accent); color: var(--on-accent); }
+    .stm-hide-mobile { display: none; }
+    .stm-hero-bar { justify-content: flex-end; padding: 14px; }
     .stm-tabbar button[aria-current="page"] { background: var(--soft); color: var(--accent); }
 }
 
@@ -255,3 +258,8 @@ button.stm-tag { cursor: pointer; min-height: 32px; }
 .stm-swatch { font: inherit; font-weight: 600; color: var(--text); cursor: pointer; text-align: left; padding: 8px; border-radius: 16px; border: 1px solid var(--line); background: var(--soft); display: flex; flex-direction: column; gap: 8px; min-height: 44px; }
 .stm-swatch[aria-checked="true"] { border: 2px solid var(--accent); padding: 7px; }
 .stm-swatch i { display: block; height: 42px; border-radius: 10px; }
+
+.stm-pill-dark, .stm-status { white-space: nowrap; }
+.stm textarea.stm-input { field-sizing: content; }
+.stm-code { display: block; margin: 4px 0; padding: 6px 10px; border-radius: 10px; background: var(--soft); border: 1px solid var(--line); font-size: 13px; overflow-wrap: anywhere; }
+.stm code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }

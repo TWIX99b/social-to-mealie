@@ -63,10 +63,20 @@ const SYSTEM_PROMPT =
     "Do not invent nutrition values; use null for nutrition fields that are not reliably available, or null for nutrition if no reliable nutrition data is present.\n" +
     "Preserve any supplied keywords exactly. If no keywords are supplied, return keywords as null.";
 
+let localTranscriber: Promise<any> | undefined;
+
 export async function getTranscription(blob: Blob): Promise<string> {
     if (env.LOCAL_TRANSCRIPTION_MODEL) {
         console.info("Using local Whisper model for transcription:", env.LOCAL_TRANSCRIPTION_MODEL);
-        const transcriber = await pipeline('automatic-speech-recognition', env.LOCAL_TRANSCRIPTION_MODEL);
+        // load the model once and keep it in memory (loading takes several seconds)
+        localTranscriber ??= pipeline('automatic-speech-recognition', env.LOCAL_TRANSCRIPTION_MODEL);
+        let transcriber: any;
+        try {
+            transcriber = await localTranscriber;
+        } catch (e) {
+            localTranscriber = undefined;
+            throw e;
+        }
         const arrayBuffer = Buffer.from(await blob.arrayBuffer());
         try {
             const wav = new WaveFile(new Uint8Array(arrayBuffer));

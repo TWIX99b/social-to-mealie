@@ -26,12 +26,12 @@ export async function POST(req: Request) {
             if (Array.isArray(body.urls)) parts.push(...body.urls.map(String));
             if (typeof body.text === "string") parts.push(body.text);
             text = parts.join("\n");
-            direct = Boolean(body.direct);
+            direct = body.direct === true || /^(true|ja|yes|1)$/i.test(String(body.direct ?? ""));
             if (typeof body.source === "string") source = body.source;
         } else if (contentType.includes("form")) {
             const form = await req.formData();
             text = [form.get("url"), form.get("text")].filter(Boolean).join("\n");
-            direct = form.get("direct") === "true";
+            direct = /^(true|ja|yes|1)$/i.test(String(form.get("direct") ?? ""));
         } else {
             text = await req.text();
         }

@@ -227,7 +227,7 @@ function Stage({ job, partial, onReview }: { job: Job; partial?: PartialRecipe; 
             <div className='stm-hero'>
                 {img && <div className='stm-hero-img' aria-hidden='true' />}
                 <div className='stm-hero-bar'>
-                    <span className='stm-pill-dark'>So entsteht das Rezept</span>
+                    <span className='stm-pill-dark stm-hide-mobile'>So entsteht das Rezept</span>
                     <span className='stm-status' role='status'>
                         {['downloading', 'transcribing', 'writing', 'saving'].includes(job.status) ? <IconSpin /> : job.status === 'failed' ? <IconX /> : job.status === 'queued' ? <IconClock /> : <IconCheck />}
                         {STATUS_TEXT[job.status]}
