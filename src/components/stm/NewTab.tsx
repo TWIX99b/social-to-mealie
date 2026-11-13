@@ -2,7 +2,10 @@
 
 import { useEffect, useState, type CSSProperties } from 'react';
 import type { Job, JobStatus } from '@/lib/stm/types';
+import { formatNumber } from '@/lib/stm/i18n';
+import { normalizeStep } from '@/lib/stm/steps';
 import { useLang, useT } from './i18n';
+import { MealPlanButton } from './MealPlan';
 import { IconCheck, IconChevron, IconCircle, IconClock, IconSpin, IconX, imageUrl, qtyText, secs, sourceLabel, statusText, type PartialRecipe } from './ui';
 
 type Props = {
@@ -220,7 +223,8 @@ function Stage({ job, partial, onReview }: { job: Job; partial?: PartialRecipe; 
     };
 
     const ingredients = (recipe?.ingredients || []).filter((i) => i && i.food);
-    const steps = (recipe?.instructions || []).filter(Boolean);
+    const steps = (recipe?.instructions || []).map((s) => normalizeStep(s)).filter((s) => s.text);
+    const allIngredients = recipe?.ingredients || [];
     const meta = [
         recipe?.servings ? t('meta.servings', { n: recipe.servings }) : '',
         recipe?.totalTime ? t('meta.total', { t: recipe.totalTime }) : '',
@@ -321,7 +325,22 @@ function Stage({ job, partial, onReview }: { job: Job; partial?: PartialRecipe; 
                                     {steps.map((s, n) => (
                                         <li key={n} className='stm-in'>
                                             <span className='stm-num'>{n + 1}</span>
-                                            <span>{s}</span>
+                                            <span style={{ minWidth: 0 }}>
+                                                {s.text}
+                                                {(s.minutes || s.ingredients.length > 0) && (
+                                                    <span className='stm-step-meta'>
+                                                        {s.minutes ? (
+                                                            <span className='stm-timer'>
+                                                                <IconClock /> {t('step.minutes', { n: formatNumber(lang, s.minutes) })}
+                                                            </span>
+                                                        ) : null}
+                                                        {s.ingredients
+                                                            .map((i) => allIngredients[i]?.food)
+                                                            .filter(Boolean)
+                                                            .join(', ')}
+                                                    </span>
+                                                )}
+                                            </span>
                                         </li>
                                     ))}
                                 </ol>
@@ -360,6 +379,7 @@ function Stage({ job, partial, onReview }: { job: Job; partial?: PartialRecipe; 
                 {job.status === 'saved' && (
                     <div className='stm-done-bar'>
                         <span style={{ flex: 1, fontWeight: 600 }}>{t('stage.saved')}</span>
+                        <MealPlanButton job={job} />
                         {job.mealieUrl && (
                             <a className='stm-btn stm-btn-primary' href={job.mealieUrl} target='_blank' rel='noreferrer'>
                                 {t('common.openMealie')}

@@ -5,6 +5,8 @@ import { env } from "@/lib/constants";
 import { getTranscription } from "@/lib/ai";
 import { downloadMediaWithYtDlp } from "@/lib/yt-dlp";
 import { writeRecipeWithClaude } from "./claude";
+import { cookieStatus, looksLikeLoginError } from "./cookies";
+import { extractFrames } from "./frames";
 import { findDuplicate, getCategories, getTags, getUnits, matchIngredients, saveRecipe } from "./mealie-api";
 import { notify } from "./notify";
 import { addJob, emit, getJob, getSettings, imagePath, listJobs, removeImages, st, stm, updateJob } from "./store";
@@ -74,7 +76,43 @@ export function requeue(id: string, patch: Partial<Job>) {
     return job;
 }
 
+/* ---------- cookie watcher ---------- */
+
+const g = globalThis as unknown as { __stmCookies?: { warned: Record<string, number>; lastCheck: number; timer?: NodeJS.Timeout } };
+const cookieState = () => (g.__stmCookies ||= { warned: {}, lastCheck: 0 });
+
+/** Gotify once per platform and 12 hours. */
+async function warnCookies(platform?: string, expires?: string | null) {
+    if (!platform || !["Instagram", "Facebook", "TikTok", "YouTube"].includes(platform)) return;
+    const c = cookieState();
+    const key = `${platform}:${expires ? "expiry" : "fail"}`;
+    if (Date.now() - (c.warned[key] || 0) < 12 * 3600 * 1000) return;
+    c.warned[key] = Date.now();
+    const text = expires
+        ? st(new Date(expires).getTime() < Date.now() ? "push.cookiesExpired" : "push.cookiesExpiring", {
+              platform,
+              date: new Date(expires).toLocaleDateString(getSettings().language === "de" ? "de-DE" : "en-GB"),
+          })
+        : st("push.cookiesFailed", { platform });
+    await notify(st("push.cookiesTitle", { platform }), text, "/?tab=einstellungen");
+}
+
+/** Checks the cookie expiry dates at most every 6 hours. */
+export function checkCookies() {
+    const c = cookieState();
+    if (!c.timer) {
+        c.timer = setInterval(() => checkCookies(), 6 * 3600 * 1000);
+        c.timer.unref?.();
+    }
+    if (Date.now() - c.lastCheck < 6 * 3600 * 1000) return;
+    c.lastCheck = Date.now();
+    for (const s of cookieStatus()) {
+        if (s.state !== "ok") void warnCookies(s.platform, s.expires);
+    }
+}
+
 export function kickWorker() {
+    checkCookies();
     const s = stm();
     if (s.workerRunning) return;
     s.workerRunning = true;
@@ -93,10 +131,12 @@ export function kickWorker() {
     })();
 }
 
-async function storeImage(id: string, n: number, source: string): Promise<boolean> {
+async function storeImage(id: string, n: number, source: string | Buffer): Promise<boolean> {
     try {
         let input: Buffer;
-        if (source.startsWith("data:")) {
+        if (Buffer.isBuffer(source)) {
+            input = source;
+        } else if (source.startsWith("data:")) {
             input = Buffer.from(source.split(",")[1] || "", "base64");
         } else {
             const res = await fetch(source, { signal: AbortSignal.timeout(20_000) });
@@ -159,10 +199,23 @@ async function processJob(id: string) {
             let media;
             try {
                 media = await downloadMediaWithYtDlp(job.url);
-            } catch (e) {
+            } catch (e: any) {
                 console.error("Download failed", e);
+                if (looksLikeLoginError(String(e?.message || e))) await warnCookies(job.platform);
                 throw new Error(friendlyDownloadError(job));
             }
+            // gallery-dl returns an empty result instead of an error when it is not let in
+            const empty =
+                !media.blob &&
+                !(media.images || []).length &&
+                (!media.thumbnail || media.thumbnail === "notfound") &&
+                (!media.description || media.description === "No description found");
+            if (empty) {
+                await warnCookies(job.platform);
+                throw new Error(friendlyDownloadError(job));
+            }
+            // stills from the video run alongside the transcription
+            const framesPromise = media.blob ? extractFrames(job.url) : Promise.resolve([] as Buffer[]);
             let count = 0;
             const sources = [
                 ...(media.thumbnail && media.thumbnail !== "notfound" ? [media.thumbnail] : []),
@@ -190,6 +243,13 @@ async function processJob(id: string) {
                 }
                 job = updateJob(id, { transcript, timings: { ...job.timings, transcribe: Date.now() - t0 } })!;
             }
+
+            let total = job.imageCount;
+            for (const frame of await framesPromise) {
+                if (total >= 10) break;
+                if (await storeImage(id, total, frame)) total++;
+            }
+            if (total !== job.imageCount) job = updateJob(id, { imageCount: total })!;
         }
 
         // 4) Claude writes
@@ -265,6 +325,7 @@ export async function saveJob(id: string, recipe: DraftRecipe, imageIndex: numbe
             status: "saved",
             mealieSlug: result.slug,
             mealieUrl: result.url,
+            mealieId: result.id,
             error: undefined,
             timings: { ...job.timings, save: Date.now() - t0 },
         });

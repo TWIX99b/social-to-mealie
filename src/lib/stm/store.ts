@@ -3,6 +3,7 @@ import path from "path";
 import { EventEmitter } from "events";
 import { env } from "@/lib/constants";
 import { type MsgKey, isLang, translate } from "./i18n";
+import { normalizeSteps } from "./steps";
 import { DEFAULT_SETTINGS, type Job, type Settings, type StmEvent } from "./types";
 
 /**
@@ -49,6 +50,8 @@ function load(): StoreData {
             if (j.status === "saving") j.status = "draft";
             if (typeof j.imageCount !== "number") j.imageCount = 0;
             if (!j.timings) j.timings = {};
+            // drafts from before step timers had plain string steps
+            if (j.recipe) j.recipe.instructions = normalizeSteps(j.recipe.instructions, j.recipe.ingredients?.length ?? 0);
         }
         const rawRules = raw.settings?.rules || {};
         // older stores (German-only version) had rules.german and no language

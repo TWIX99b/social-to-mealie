@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { type MatchEntry, buildIndex, lookup } from '@/lib/stm/match';
-import type { DraftRecipe, Ingredient, Job } from '@/lib/stm/types';
+import { normalizeSteps } from '@/lib/stm/steps';
+import type { DraftRecipe, Ingredient, Job, RecipeStep } from '@/lib/stm/types';
 import { useT } from './i18n';
-import { IconPlus, IconSpin, IconTrash, IconX, daysOld, imageUrl, sourceLabel } from './ui';
+import { MealPlanButton } from './MealPlan';
+import { IconClock, IconPlus, IconSpin, IconTrash, IconX, daysOld, imageUrl, sourceLabel } from './ui';
 
 type Meta = { tags: string[]; categories: string[] };
 
@@ -21,6 +23,13 @@ const emptyRecipe = (): DraftRecipe => ({
     category: null,
 });
 
+/** deep copy; also turns steps of older drafts (plain strings) into step objects */
+function cloneRecipe(r: DraftRecipe): DraftRecipe {
+    const c = structuredClone(r);
+    c.instructions = normalizeSteps(c.instructions, c.ingredients.length);
+    return c;
+}
+
 function numText(n: number | null | undefined) {
     return n === null || n === undefined ? '' : String(n).replace('.', ',');
 }
@@ -32,7 +41,7 @@ function parseNum(s: string): number | null {
 
 export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: string; job?: Job; onClose: () => void; onRewrite: (id: string) => void }) {
     const [job, setJob] = useState<Job | null>(liveJob ?? null);
-    const [recipe, setRecipe] = useState<DraftRecipe | null>(liveJob?.recipe ? structuredClone(liveJob.recipe) : null);
+    const [recipe, setRecipe] = useState<DraftRecipe | null>(liveJob?.recipe ? cloneRecipe(liveJob.recipe) : null);
     const [qtyDraft, setQtyDraft] = useState<string[]>([]);
     const [imageIndex, setImageIndex] = useState(0);
     const [meta, setMeta] = useState<Meta>({ tags: [], categories: [] });
@@ -60,7 +69,7 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
                 .then((b) => {
                     const j: Job = b.job ?? b;
                     setJob(j);
-                    setRecipe(j.recipe ? structuredClone(j.recipe) : emptyRecipe());
+                    setRecipe(j.recipe ? cloneRecipe(j.recipe) : emptyRecipe());
                 })
                 .catch(() => setNotFound(true));
         }
@@ -104,6 +113,22 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
             return { ...r, ingredients };
         });
     const tagOptions = Array.from(new Set([...meta.tags, ...recipe.tags]));
+    const setStep = (n: number, patch: Partial<RecipeStep>) =>
+        setRecipe((r) => (r ? { ...r, instructions: r.instructions.map((s, k) => (k === n ? { ...s, ...patch } : s)) } : r));
+    /** removes an ingredient and keeps the step references pointing at the right rows */
+    const removeIngredient = (n: number) =>
+        setRecipe((r) =>
+            r
+                ? {
+                      ...r,
+                      ingredients: r.ingredients.filter((_, k) => k !== n),
+                      instructions: r.instructions.map((s) => ({
+                          ...s,
+                          ingredients: s.ingredients.filter((i) => i !== n).map((i) => (i > n ? i - 1 : i)),
+                      })),
+                  }
+                : r,
+        );
     // live check against Mealie (falls back to the server's match when the list could not be loaded)
     const foodExists = (ing: Ingredient) => (foodIndex ? Boolean(lookup(foodIndex, ing.food)) : Boolean(ing.foodId));
     const unitExists = (ing: Ingredient) => !ing.unit || (unitIndex ? Boolean(lookup(unitIndex, ing.unit)) : Boolean(ing.unitId));
@@ -150,7 +175,8 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
             <section className='stm-card stm-glass' style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <h2 className='stm-title'>{job.recipe?.name || recipe.name}</h2>
                 <p style={{ margin: 0 }}>{t('review.savedText')}</p>
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <MealPlanButton job={job} />
                     {job.mealieUrl && (
                         <a className='stm-btn stm-btn-primary' href={job.mealieUrl} target='_blank' rel='noreferrer'>
                             {t('common.openMealie')}
@@ -342,7 +368,7 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
                                         type='button'
                                         className='stm-icon-btn'
                                         aria-label={t('review.removeIngredient', { n: n + 1 })}
-                                        onClick={() => set('ingredients', recipe.ingredients.filter((_, k) => k !== n))}
+                                        onClick={() => removeIngredient(n)}
                                     >
                                         <IconTrash />
                                     </button>
@@ -359,7 +385,7 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
                         </button>
                         {(newFoods > 0 || newUnits > 0) && (
                             <p className='stm-small' style={{ margin: '10px 0 0' }}>
-                                <span style={{ color: 'var(--warn)', fontWeight: 600 }}>{t('review.newSummary', { f: newFoods, u: newUnits })}</span> {t('review.newSummaryHint')}
+                                <span style={{ color: 'var(--warn)', fontWeight: 600 }}>{t('review.newSummary', { list: [newFoods > 0 ? t('review.newFoods', { n: newFoods }) : '', newUnits > 0 ? t('review.newUnits', { n: newUnits }) : ''].filter(Boolean).join(', ') })}</span> {t('review.newSummaryHint')}
                             </p>
                         )}
                         {matchData && (
@@ -386,13 +412,62 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
                             {recipe.instructions.map((s, n) => (
                                 <li key={n}>
                                     <span className='stm-num'>{n + 1}</span>
-                                    <textarea
-                                        className='stm-input'
-                                        rows={2}
-                                        aria-label={t('review.step', { n: n + 1 })}
-                                        value={s}
-                                        onChange={(e) => set('instructions', recipe.instructions.map((x, k) => (k === n ? e.target.value : x)))}
-                                    />
+                                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                        <textarea
+                                            className='stm-input'
+                                            rows={2}
+                                            aria-label={t('review.step', { n: n + 1 })}
+                                            value={s.text}
+                                            onChange={(e) => setStep(n, { text: e.target.value })}
+                                        />
+                                        <div className='stm-step-edit'>
+                                            <label className='stm-timer-input' title={t('review.timerHelp')}>
+                                                <IconClock />
+                                                <input
+                                                    className='stm-input'
+                                                    inputMode='decimal'
+                                                    aria-label={t('review.timer', { n: n + 1 })}
+                                                    placeholder='–'
+                                                    value={s.minutes === null ? '' : numText(s.minutes)}
+                                                    onChange={(e) => setStep(n, { minutes: parseNum(e.target.value) })}
+                                                />
+                                                <span className='stm-small'>{t('review.minutesShort')}</span>
+                                            </label>
+                                            {s.ingredients.map((i) =>
+                                                recipe.ingredients[i] ? (
+                                                    <button
+                                                        key={i}
+                                                        type='button'
+                                                        className='stm-chip stm-chip-x'
+                                                        aria-label={t('review.removeStepIngredient', { name: recipe.ingredients[i].food })}
+                                                        onClick={() => setStep(n, { ingredients: s.ingredients.filter((x) => x !== i) })}
+                                                    >
+                                                        {recipe.ingredients[i].food || '?'} <IconX size={12} />
+                                                    </button>
+                                                ) : null,
+                                            )}
+                                            {recipe.ingredients.some((ing, i) => ing.food.trim() && !s.ingredients.includes(i)) && (
+                                                <select
+                                                    className='stm-input stm-select-small'
+                                                    aria-label={t('review.addStepIngredient')}
+                                                    value=''
+                                                    onChange={(e) => {
+                                                        const i = Number(e.target.value);
+                                                        if (e.target.value !== '' && Number.isInteger(i)) setStep(n, { ingredients: [...s.ingredients, i].sort((a, b) => a - b) });
+                                                    }}
+                                                >
+                                                    <option value=''>{t('review.addStepIngredient')}</option>
+                                                    {recipe.ingredients.map((ing, i) =>
+                                                        ing.food.trim() && !s.ingredients.includes(i) ? (
+                                                            <option key={i} value={i}>
+                                                                {ing.food}
+                                                            </option>
+                                                        ) : null,
+                                                    )}
+                                                </select>
+                                            )}
+                                        </div>
+                                    </div>
                                     <button
                                         type='button'
                                         className='stm-icon-btn'
@@ -404,7 +479,7 @@ export function ReviewView({ id, job: liveJob, onClose, onRewrite }: { id: strin
                                 </li>
                             ))}
                         </ol>
-                        <button type='button' className='stm-btn' style={{ marginTop: 10 }} onClick={() => set('instructions', [...recipe.instructions, ''])}>
+                        <button type='button' className='stm-btn' style={{ marginTop: 10 }} onClick={() => set('instructions', [...recipe.instructions, { text: '', minutes: null, ingredients: [] }])}>
                             <IconPlus /> {t('review.addStep')}
                         </button>
                     </div>

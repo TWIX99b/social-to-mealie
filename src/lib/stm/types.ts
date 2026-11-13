@@ -31,6 +31,14 @@ export interface RecipeNote {
     text: string;
 }
 
+export interface RecipeStep {
+    text: string;
+    /** timer for this step (simmer, bake, rest …) */
+    minutes: number | null;
+    /** indices into DraftRecipe.ingredients used in this step */
+    ingredients: number[];
+}
+
 export interface DraftRecipe {
     name: string;
     description: string;
@@ -38,7 +46,7 @@ export interface DraftRecipe {
     totalTime: string | null;
     prepTime: string | null;
     ingredients: Ingredient[];
-    instructions: string[];
+    instructions: RecipeStep[];
     notes: RecipeNote[];
     tags: string[];
     category: string | null;
@@ -71,6 +79,10 @@ export interface Job {
     duplicateOf?: { name: string; slug: string; date?: string; url: string };
     mealieSlug?: string;
     mealieUrl?: string;
+    /** Mealie recipe id (for the meal plan) */
+    mealieId?: string;
+    /** last meal plan entry made from here */
+    mealplan?: { date: string; entryType: string };
     model?: string;
     hint?: string;
     /** internal flags for the next run */

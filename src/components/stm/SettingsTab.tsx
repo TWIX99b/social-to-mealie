@@ -5,7 +5,7 @@ import type { Lang, MsgKey } from '@/lib/stm/i18n';
 import { DEFAULT_SETTINGS, type Settings } from '@/lib/stm/types';
 import { useT } from './i18n';
 import type { Mode } from './StmApp';
-import { IconCheck, IconSpin } from './ui';
+import { IconCheck, IconSpin, dateTime } from './ui';
 
 const THEMES: [string, MsgKey, string][] = [
     ['kueche', 'theme.kueche', 'linear-gradient(135deg, #f3dcc6, #c25a2c 55%, #6f7d4a)'],
@@ -28,6 +28,7 @@ type Info = {
     mealieUrl: string;
     appUrl: string;
     retentionDays: number;
+    cookies?: { platform: string; state: 'ok' | 'expiring' | 'expired'; expires: string | null }[];
 };
 
 const RULES: [keyof Settings['rules'], MsgKey, MsgKey][] = [
@@ -251,6 +252,20 @@ export function SettingsTab({ theme, mode, lang, setTheme, setMode, setLang }: P
                                     ['Mealie', Boolean(info.mealieUrl), info.mealieUrl],
                                     ['Gotify', info.gotify, info.gotify ? t('settings.gotifyOn') : t('settings.gotifyOff')],
                                     [t('settings.transcription'), Boolean(info.localWhisper), info.localWhisper || t('settings.transcriptionNone')],
+                                    ...(info.cookies && info.cookies.length > 0
+                                        ? info.cookies.map(
+                                              (c) =>
+                                                  [
+                                                      t('settings.cookiesFor', { platform: c.platform }),
+                                                      c.state === 'ok',
+                                                      c.state === 'expired'
+                                                          ? t('settings.cookiesExpired', { date: c.expires ? dateTime(lang, c.expires) : '?' })
+                                                          : c.expires
+                                                            ? t(c.state === 'expiring' ? 'settings.cookiesExpiring' : 'settings.cookiesValid', { date: dateTime(lang, c.expires) })
+                                                            : t('settings.cookiesSession'),
+                                                  ] as [string, boolean, string],
+                                          )
+                                        : [[t('settings.cookies'), false, t('settings.cookiesNone')] as [string, boolean, string]]),
                                 ] as [string, boolean, string][]
                             ).map(([name, ok, detail]) => (
                                 <li key={name} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>

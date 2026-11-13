@@ -1,6 +1,7 @@
 import fs from "fs";
 import { env } from "@/lib/constants";
 import { parsePartialJson } from "./partial-json";
+import { normalizeSteps } from "./steps";
 import { st } from "./store";
 import type { DraftRecipe, Ingredient, Settings } from "./types";
 
@@ -25,7 +26,26 @@ const RECIPE_TOOL_SCHEMA = {
                 required: ["quantity", "unit", "food", "note"],
             },
         },
-        instructions: { type: "array", items: { type: "string" }, description: "Steps, one clear paragraph each" },
+        instructions: {
+            type: "array",
+            description: "Steps, one clear paragraph each",
+            items: {
+                type: "object",
+                properties: {
+                    text: { type: "string", description: "What to do in this step" },
+                    minutes: {
+                        type: ["number", "null"],
+                        description: "Timer for this step in minutes when it contains waiting/cooking time (simmer, bake, rest, marinate), otherwise null",
+                    },
+                    ingredients: {
+                        type: "array",
+                        items: { type: "integer" },
+                        description: "0-based indices of the ingredients (from the ingredients list) used in this step",
+                    },
+                },
+                required: ["text", "minutes", "ingredients"],
+            },
+        },
         tags: { type: "array", items: { type: "string" } },
         category: { type: ["string", "null"] },
         notes: {
@@ -65,6 +85,7 @@ function systemPrompt(ctx: ClaudeContext): string {
         "Do not invent ingredients or amounts that are not in the material; only estimate when it is obvious, and mark estimates in the note (\"" + (de ? "ca." : "approx.") + "\").",
         "List ingredients in the order they are used. The food is the plain base word (e.g. \"" + (de ? "Zwiebel" : "onion") + "\"); preparation like chopped or diced goes into the note.",
         "For counted items (2 onions, 1 lime) the unit stays null.",
+        "For every step, set minutes when the step has a waiting or cooking time (e.g. 10 for simmering 10 minutes; use the upper value of a range), and list the indices of the ingredients that are added or used in that step.",
         r.translate
             ? `Write everything (title, description, ingredients, steps, notes) in ${language}, translating if the post is in another language.`
             : `Write in ${language} unless the post is clearly in another language; then keep the post's language.`,
@@ -131,7 +152,7 @@ function normalize(raw: any): DraftRecipe {
         totalTime: r.totalTime ? String(r.totalTime) : null,
         prepTime: r.prepTime ? String(r.prepTime) : null,
         ingredients,
-        instructions: Array.isArray(r.instructions) ? r.instructions.map((x: any) => String(x?.text ?? x)) : [],
+        instructions: normalizeSteps(r.instructions, ingredients.length).filter((s) => s.text.trim()),
         notes: Array.isArray(r.notes)
             ? r.notes.filter((n: any) => n && n.text).map((n: any) => ({ title: String(n.title || ""), text: String(n.text) }))
             : [],

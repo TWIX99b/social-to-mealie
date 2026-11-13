@@ -24,7 +24,11 @@ Paste a link (or share it from your phone). The app downloads the video and imag
 - **Live view "So entsteht das Rezept"** – step list with timings, collapsible transcript, the recipe streams in while Claude writes
 - **Background jobs with a queue** – close the page, the job keeps running; [Gotify](https://gotify.net) tells you when a draft is ready or something failed
 - **Review before saving** – everything is editable, pick the cover image from the post, or let Claude rewrite it with a hint (uses the bigger model)
-- **Fits your Mealie** – ingredients are split into quantity / unit / food / note and matched against your existing foods and units; tags and categories are only picked from the ones you already have
+- **Fits your Mealie** – ingredients are split into quantity / unit / food / note and matched against your existing foods and units (plurals, abbreviations and aliases included, with suggestions while editing); tags and categories are only picked from the ones you already have
+- **Step timers and ingredients per step** – Claude fills Mealie's step timers and links each step to its ingredients, so cooking mode shows both
+- **Stills from the video** – a few frames from the video are offered as cover images, because the finished dish is often only shown in the video
+- **Cookie watcher** – Gotify warns when the Instagram / Facebook / TikTok cookies are about to expire or a post is refused; the status is shown in the settings
+- **Meal plan** – after saving, add the recipe to a day in Mealie's meal plan
 - **Duplicate check** – a link that is already in Mealie is recognised before Claude is asked (no cost)
 - **House rules** – recipe language, always translate, metric, tbsp/tsp, oven mode, plus your own free-text rules and model choice, stored on the server for everyone
 - **Share from the phone** – iOS Shortcut via the API, Android via the PWA share target

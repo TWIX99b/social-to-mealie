@@ -268,3 +268,15 @@ button.stm-tag { cursor: pointer; min-height: 32px; }
 .stm textarea.stm-input[rows="4"] { min-height: calc(4 * 1.45em + 22px); }
 
 .stm-input.stm-input-new { border-color: var(--warn); border-style: dashed; }
+
+.stm-step-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; margin-top: 4px; font-size: 13px; color: var(--muted); }
+.stm-step-meta > * { display: inline-flex; }
+.stm-timer { align-items: center; gap: 4px; font-weight: 600; color: var(--accent); }
+.stm-step-edit { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.stm-timer-input { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+.stm-timer-input .stm-input { width: 64px; min-height: 36px; padding: 6px 8px; text-align: center; }
+.stm-chip-x { font: inherit; font-size: 13px; color: var(--text); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-height: 32px; }
+select.stm-input.stm-select-small { min-height: 36px; padding: 6px 34px 6px 12px; font-size: 13px; }
+
+.stm-plan { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.stm-plan select.stm-input { min-height: 44px; }

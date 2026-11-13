@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { Job } from '@/lib/stm/types';
 import { useLang, useT } from './i18n';
+import { MealPlanButton } from './MealPlan';
 import { IconCheck, IconX, dateTime, sourceLabel, statusText } from './ui';
 
 export function HistoryTab({ history, onFocus, retentionDays = 10 }: { history: Job[]; onReview: (id: string) => void; onFocus: (id: string) => void; retentionDays?: number }) {
@@ -64,6 +65,7 @@ export function HistoryTab({ history, onFocus, retentionDays = 10 }: { history: 
                             )}
                         </div>
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            {j.status === 'saved' && <MealPlanButton job={j} />}
                             {j.status === 'saved' && j.mealieUrl && (
                                 <a className='stm-btn' href={j.mealieUrl} target='_blank' rel='noreferrer'>
                                     {t('common.open')}

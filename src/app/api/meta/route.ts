@@ -1,4 +1,5 @@
 import { env } from "@/lib/constants";
+import { cookieStatus } from "@/lib/stm/cookies";
 import { getCategories, getTags } from "@/lib/stm/mealie-api";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +24,7 @@ export async function GET() {
             mealieUrl: env.EXTERNAL_MEALIE_URL || env.MEALIE_URL,
             appUrl: env.APP_URL,
             retentionDays: env.RETENTION_DAYS,
+            cookies: cookieStatus(),
         },
     });
 }

@@ -212,23 +212,24 @@ export async function saveRecipe(
     url: string,
     recipe: DraftRecipe,
     imageFile: string | null,
-): Promise<{ slug: string; url: string }> {
+): Promise<{ slug: string; url: string; id?: string }> {
     const slug = await mealieJson<string>("/api/recipes", {
         method: "POST",
         body: JSON.stringify({ name: recipe.name.trim() || "Recipe" }),
     });
 
+    let id: string | undefined;
     try {
-        await fillRecipe(slug, url, recipe, imageFile);
+        id = await fillRecipe(slug, url, recipe, imageFile);
     } catch (e) {
         // do not leave an empty recipe behind – a retry would otherwise create "name-1"
         await mealie(`/api/recipes/${encodeURIComponent(slug)}`, { method: "DELETE" }).catch(() => undefined);
         throw e;
     }
-    return { slug, url: recipeUrl(slug) };
+    return { slug, url: recipeUrl(slug), id };
 }
 
-async function fillRecipe(slug: string, url: string, recipe: DraftRecipe, imageFile: string | null) {
+async function fillRecipe(slug: string, url: string, recipe: DraftRecipe, imageFile: string | null): Promise<string | undefined> {
     const recipeIngredient = [];
     for (const ing of recipe.ingredients) {
         const unit = ing.unit ? await ensureUnit(ing.unit) : null;
@@ -262,14 +263,25 @@ async function fillRecipe(slug: string, url: string, recipe: DraftRecipe, imageF
         orgURL: url,
         recipeIngredient,
         recipeInstructions: recipe.instructions
-            .filter((t) => t.trim())
-            .map((text) => ({ id: randomUUID(), title: "", summary: "", text, ingredientReferences: [] })),
+            .filter((step) => step.text.trim())
+            .map((step) => ({
+                id: randomUUID(),
+                title: "",
+                summary: "",
+                text: step.text,
+                // Mealie shows these ingredients next to the step in cooking mode
+                ingredientReferences: step.ingredients
+                    .filter((i) => recipeIngredient[i])
+                    .map((i) => ({ referenceId: recipeIngredient[i].referenceId })),
+                // step timer
+                durationSeconds: step.minutes ? Math.round(step.minutes * 60) : null,
+            })),
         notes: recipe.notes.filter((n) => n.text?.trim()).map((n) => ({ title: n.title || "", text: n.text })),
         tags: pick(tags, recipe.tags),
         recipeCategory: pick(categories, recipe.category ? [recipe.category] : []),
     };
 
-    await mealieJson(`/api/recipes/${encodeURIComponent(slug)}`, {
+    const updated = await mealieJson<{ id?: string }>(`/api/recipes/${encodeURIComponent(slug)}`, {
         method: "PATCH",
         body: JSON.stringify(patch),
     });
@@ -285,4 +297,19 @@ async function fillRecipe(slug: string, url: string, recipe: DraftRecipe, imageF
             console.warn("Image upload failed", e);
         }
     }
+    return updated?.id;
+}
+
+/* ---------- meal plan ---------- */
+
+export async function recipeId(slug: string): Promise<string> {
+    const r = await mealieJson<{ id: string }>(`/api/recipes/${encodeURIComponent(slug)}`);
+    return r.id;
+}
+
+export async function addToMealPlan(id: string, date: string, entryType: string) {
+    return mealieJson("/api/households/mealplans", {
+        method: "POST",
+        body: JSON.stringify({ date, entryType, recipeId: id, title: "", text: "" }),
+    });
 }

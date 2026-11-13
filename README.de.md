@@ -24,7 +24,11 @@ Link einfügen oder vom Handy teilen. Die App lädt Video und Bilder, transkribi
 - **Live-Ansicht „So entsteht das Rezept“** – Ablauf mit Zeiten, aufklappbares Transkript, das Rezept erscheint, während Claude schreibt
 - **Hintergrund-Jobs mit Warteschlange** – Seite schließen, der Job läuft weiter; [Gotify](https://gotify.net) meldet „bereit zum Prüfen“ und Fehler
 - **Erst prüfen, dann speichern** – alles ist bearbeitbar, Titelbild aus den Bildern des Posts wählen oder Claude mit einem Hinweis neu schreiben lassen (mit dem größeren Modell)
-- **Passt zu deinem Mealie** – Zutaten getrennt nach Menge / Einheit / Lebensmittel / Notiz und mit vorhandenen Lebensmitteln und Einheiten abgeglichen; Tags und Kategorien nur aus den vorhandenen
+- **Passt zu deinem Mealie** – Zutaten getrennt nach Menge / Einheit / Lebensmittel / Notiz und mit vorhandenen Lebensmitteln und Einheiten abgeglichen (auch Mehrzahl, Abkürzungen und Aliasse, mit Vorschlägen beim Bearbeiten); Tags und Kategorien nur aus den vorhandenen
+- **Timer und Zutaten je Schritt** – Claude füllt die Schritt-Timer in Mealie und ordnet jedem Schritt seine Zutaten zu; im Kochmodus siehst du beides
+- **Standbilder aus dem Video** – ein paar Bilder aus dem Video stehen als Titelbild zur Wahl, weil das fertige Gericht oft nur im Video zu sehen ist
+- **Cookie-Wächter** – Gotify warnt, wenn die Instagram-, Facebook- oder TikTok-Cookies bald ablaufen oder ein Post verweigert wird; der Stand steht in den Einstellungen
+- **Wochenplan** – nach dem Speichern das Rezept direkt an einen Tag im Mealie-Wochenplan legen
 - **Duplikat-Prüfung** – ein Link, der schon in Mealie ist, wird erkannt, bevor Claude gefragt wird (kostet nichts)
 - **Hausregeln** – Rezeptsprache, immer übersetzen, metrisch, EL/TL, Ofenart, eigene Hinweise und Modellwahl, auf dem Server gespeichert und für alle gleich
 - **Teilen vom Handy** – iPhone-Kurzbefehl über die API, Android über die installierbare Web-App (Teilen-Menü)
