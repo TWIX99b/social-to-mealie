@@ -2,7 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { DEFAULT_SETTINGS, type Settings } from '@/lib/stm/types';
+import type { Mode } from './StmApp';
 import { IconCheck, IconSpin } from './ui';
+
+const THEMES: [string, string, string][] = [
+    ['kueche', 'Küche', 'linear-gradient(135deg, #f3dcc6, #c25a2c 55%, #6f7d4a)'],
+    ['homelab', 'Homelab', 'linear-gradient(135deg, #dfe8f3, #1e4a78 55%, #0b6a52)'],
+    ['kraeuter', 'Kräuter', 'linear-gradient(135deg, #e6ecd8, #78965f 55%, #c9a874)'],
+    ['nacht', 'Nacht', 'linear-gradient(135deg, #2a2a3a, #505a8c 55%, #c08a2a)'],
+];
 
 type Info = {
     gotify: boolean;
@@ -23,7 +31,9 @@ const RULES: [keyof Settings['rules'], string, string][] = [
     ['existingTags', 'Nur vorhandene Tags', 'Claude wählt nur Tags und Kategorien, die es in Mealie schon gibt'],
 ];
 
-export function SettingsTab() {
+type Props = { theme: string; mode: Mode; setTheme: (t: string) => void; setMode: (m: Mode) => void };
+
+export function SettingsTab({ theme, mode, setTheme, setMode }: Props) {
     const [settings, setSettings] = useState<Settings | null>(null);
     const [info, setInfo] = useState<Info | null>(null);
     const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -129,6 +139,36 @@ export function SettingsTab() {
             </main>
 
             <aside className='stm-side'>
+                <section className='stm-card stm-glass' aria-labelledby='stm-look-h'>
+                    <h3 id='stm-look-h' className='stm-h4' style={{ marginBottom: 10 }}>
+                        Darstellung
+                    </h3>
+                    <div className='stm-swatches' role='radiogroup' aria-label='Thema'>
+                        {THEMES.map(([v, l, bg]) => (
+                            <button key={v} type='button' role='radio' aria-checked={theme === v} className='stm-swatch' onClick={() => setTheme(v)}>
+                                <i style={{ background: bg }} aria-hidden='true' />
+                                {l}
+                            </button>
+                        ))}
+                    </div>
+                    <div className='stm-segment' role='radiogroup' aria-label='Hell oder dunkel' style={{ marginTop: 12, width: 'fit-content' }}>
+                        {(
+                            [
+                                ['light', 'Hell'],
+                                ['dark', 'Dunkel'],
+                                ['auto', 'Automatisch'],
+                            ] as [Mode, string][]
+                        ).map(([m, l]) => (
+                            <button key={m} type='button' role='radio' aria-checked={mode === m} aria-pressed={mode === m} onClick={() => setMode(m)}>
+                                {l}
+                            </button>
+                        ))}
+                    </div>
+                    <p className='stm-small' style={{ margin: '8px 0 0' }}>
+                        Gilt nur für dieses Gerät.
+                    </p>
+                </section>
+
                 <section className='stm-card stm-glass' aria-labelledby='stm-share-h'>
                     <h3 id='stm-share-h' className='stm-h4' style={{ marginBottom: 10 }}>
                         Vom Handy teilen

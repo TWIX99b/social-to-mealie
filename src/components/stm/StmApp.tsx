@@ -8,16 +8,10 @@ import { HistoryTab } from './HistoryTab';
 import { NewTab } from './NewTab';
 import { ReviewView } from './ReviewView';
 import { SettingsTab } from './SettingsTab';
-import { IconMoon, IconPot, type PartialRecipe } from './ui';
+import { IconPot, type PartialRecipe } from './ui';
 
 export type Tab = 'neu' | 'entwuerfe' | 'verlauf' | 'einstellungen';
-type Mode = 'light' | 'dark' | 'auto';
-const THEMES = [
-    ['kueche', 'Küche'],
-    ['homelab', 'Homelab'],
-    ['kraeuter', 'Kräuter'],
-    ['nacht', 'Nacht'],
-] as const;
+export type Mode = 'light' | 'dark' | 'auto';
 
 function readLS(key: string, fallback: string) {
     try {
@@ -205,60 +199,6 @@ export function StmApp() {
                             </button>
                         ))}
                     </nav>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span className='stm-small stm-subtitle'>Thema</span>
-                            <select
-                                className='stm-input'
-                                value={theme}
-                                aria-label='Thema'
-                                onChange={(e) => {
-                                    setTheme(e.target.value);
-                                    writeLS('stm-theme', e.target.value);
-                                }}
-                            >
-                                {THEMES.map(([v, l]) => (
-                                    <option key={v} value={v}>
-                                        {l}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-                        <div className='stm-segment stm-subtitle' role='group' aria-label='Hell oder dunkel'>
-                            {(
-                                [
-                                    ['light', 'Hell'],
-                                    ['dark', 'Dunkel'],
-                                    ['auto', 'Auto'],
-                                ] as [Mode, string][]
-                            ).map(([m, l]) => (
-                                <button
-                                    key={m}
-                                    type='button'
-                                    aria-pressed={mode === m}
-                                    onClick={() => {
-                                        setMode(m);
-                                        writeLS('stm-mode', m);
-                                    }}
-                                >
-                                    {l}
-                                </button>
-                            ))}
-                        </div>
-                        <button
-                            type='button'
-                            className='stm-icon-btn stm-mobile-only'
-                            aria-label={`Darstellung wechseln (jetzt: ${mode === 'auto' ? 'Automatisch' : mode === 'light' ? 'Hell' : 'Dunkel'})`}
-                            onClick={() => {
-                                const order: Mode[] = ['auto', 'light', 'dark'];
-                                const next = order[(order.indexOf(mode) + 1) % 3];
-                                setMode(next);
-                                writeLS('stm-mode', next);
-                            }}
-                        >
-                            <IconMoon />
-                        </button>
-                    </div>
                 </header>
 
                 {!connected && (
@@ -305,7 +245,20 @@ export function StmApp() {
                         )}
                         {tab === 'entwuerfe' && <DraftsTab drafts={drafts} onReview={openReview} />}
                         {tab === 'verlauf' && <HistoryTab history={history} onReview={openReview} onFocus={(id) => { setFocusId(id); go('neu'); }} />}
-                        {tab === 'einstellungen' && <SettingsTab />}
+                        {tab === 'einstellungen' && (
+                            <SettingsTab
+                                theme={theme}
+                                mode={mode}
+                                setTheme={(t) => {
+                                    setTheme(t);
+                                    writeLS('stm-theme', t);
+                                }}
+                                setMode={(m) => {
+                                    setMode(m);
+                                    writeLS('stm-mode', m);
+                                }}
+                            />
+                        )}
                     </>
                 )}
             </div>
@@ -313,7 +266,7 @@ export function StmApp() {
             <nav aria-label='Bereiche' className='stm-tabbar'>
                 {tabs.map(([key, label, count]) => (
                     <button key={key} type='button' aria-current={tab === key && !reviewId ? 'page' : undefined} onClick={() => go(key)}>
-                        <span>{key === 'einstellungen' ? 'Mehr' : label}</span>
+                        <span>{label}</span>
                         <span style={{ fontSize: 11, minHeight: 14 }}>{count > 0 ? count : ''}</span>
                     </button>
                 ))}
