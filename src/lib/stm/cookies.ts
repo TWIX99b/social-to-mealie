@@ -22,6 +22,34 @@ export interface CookieStatus {
     expires: string | null;
 }
 
+export type CookieFileState = "missing" | "empty" | "unreadable" | "noLogin" | "ok";
+
+/** Why the cookie list is empty – shown in the settings. */
+export function cookieFileState(): { state: CookieFileState; path: string } {
+    const file = path.resolve("cookies.txt");
+    const candidates = [env.COOKIES, file].filter(Boolean) as string[];
+    let sawEmpty = false;
+    for (const f of candidates) {
+        try {
+            const st = fs.statSync(f);
+            if (!st.isFile()) continue;
+            if (st.size === 0) {
+                sawEmpty = true;
+                continue;
+            }
+            try {
+                fs.accessSync(f, fs.constants.R_OK);
+            } catch {
+                return { state: "unreadable", path: f };
+            }
+            return { state: cookieStatus().length ? "ok" : "noLogin", path: f };
+        } catch {
+            /* not there */
+        }
+    }
+    return { state: sawEmpty ? "empty" : "missing", path: file };
+}
+
 export function cookiesFile(): string | null {
     const candidates = [env.COOKIES, path.resolve("cookies.txt")].filter(Boolean) as string[];
     for (const file of candidates) {

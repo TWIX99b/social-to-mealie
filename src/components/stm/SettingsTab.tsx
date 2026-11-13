@@ -29,6 +29,7 @@ type Info = {
     appUrl: string;
     retentionDays: number;
     cookies?: { platform: string; state: 'ok' | 'expiring' | 'expired'; expires: string | null }[];
+    cookieFile?: { state: 'missing' | 'empty' | 'unreadable' | 'noLogin' | 'ok'; path: string };
 };
 
 const RULES: [keyof Settings['rules'], MsgKey, MsgKey][] = [
@@ -265,7 +266,22 @@ export function SettingsTab({ theme, mode, lang, setTheme, setMode, setLang }: P
                                                             : t('settings.cookiesSession'),
                                                   ] as [string, boolean, string],
                                           )
-                                        : [[t('settings.cookies'), false, t('settings.cookiesNone')] as [string, boolean, string]]),
+                                        : [
+                                              [
+                                                  t('settings.cookies'),
+                                                  false,
+                                                  t(
+                                                      info.cookieFile?.state === 'empty'
+                                                          ? 'settings.cookiesEmpty'
+                                                          : info.cookieFile?.state === 'unreadable'
+                                                            ? 'settings.cookiesUnreadable'
+                                                            : info.cookieFile?.state === 'noLogin'
+                                                              ? 'settings.cookiesNoLogin'
+                                                              : 'settings.cookiesNone',
+                                                      { path: info.cookieFile?.path || '/app/cookies.txt' },
+                                                  ),
+                                              ] as [string, boolean, string],
+                                          ]),
                                 ] as [string, boolean, string][]
                             ).map(([name, ok, detail]) => (
                                 <li key={name} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -275,7 +291,7 @@ export function SettingsTab({ theme, mode, lang, setTheme, setMode, setLang }: P
                                     <span style={{ minWidth: 0 }}>
                                         <strong>{name}</strong>
                                         <br />
-                                        <span className='stm-small' style={{ wordBreak: 'break-all' }}>
+                                        <span className='stm-small' style={{ overflowWrap: 'anywhere' }}>
                                             {detail}
                                         </span>
                                     </span>
