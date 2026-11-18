@@ -109,6 +109,7 @@ Der erste Link mit Ton dauert ein paar Minuten länger, weil das Whisper-Modell 
 | `EXTERNAL_MEALIE_URL` | nein | `MEALIE_URL` | Mealie-Adresse für die Links „In Mealie öffnen“ |
 | `MEALIE_GROUP_NAME` | nein | `home` | Mealie-Gruppe, wird in Rezept-Links verwendet |
 | `LOCAL_TRANSCRIPTION_MODEL` | empfohlen | – | Whisper-Modell (ONNX) von Hugging Face, z. B. `Xenova/whisper-small` oder `Xenova/whisper-base` |
+| `WHISPER_IDLE_MINUTES` | – | `5` | Lokales Whisper-Modell nach so vielen Minuten ohne Transkription entladen, gibt 1–3 GB RAM frei (`0` = direkt nach jeder Transkription) |
 | `CLAUDE_MODEL_FAST` | nein | `claude-haiku-5-5` | Modell für den ersten Entwurf (Einstellung „Automatisch“ / „Haiku“) |
 | `CLAUDE_MODEL_SMART` | nein | `claude-sonnet-5-5` | Modell für „Neu schreiben“ (Einstellung „Automatisch“ / „Sonnet“) |
 | `APP_LANGUAGE` | nein | `en` | Rezeptsprache bei einer frischen Installation (`en` oder `de`); später in den Einstellungen änderbar |

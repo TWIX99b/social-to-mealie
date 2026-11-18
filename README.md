@@ -109,6 +109,7 @@ The first link with audio takes a few minutes longer, because the Whisper model 
 | `EXTERNAL_MEALIE_URL` | no | `MEALIE_URL` | Mealie URL used for "open in Mealie" links |
 | `MEALIE_GROUP_NAME` | no | `home` | Mealie group, used in recipe links |
 | `LOCAL_TRANSCRIPTION_MODEL` | recommended | – | Hugging Face ONNX Whisper model, e.g. `Xenova/whisper-small` or `Xenova/whisper-base` |
+| `WHISPER_IDLE_MINUTES` | – | `5` | Unload the local Whisper model after this many idle minutes to free 1–3 GB of RAM (`0` = right after each transcription) |
 | `CLAUDE_MODEL_FAST` | no | `claude-haiku-5-5` | Model for the first draft (setting "Automatic" / "Haiku") |
 | `CLAUDE_MODEL_SMART` | no | `claude-sonnet-5-5` | Model for "Rewrite" (setting "Automatic" / "Sonnet") |
 | `APP_LANGUAGE` | no | `en` | Recipe language for a fresh install (`en` or `de`); can be changed later in Settings |

@@ -64,35 +64,56 @@ const SYSTEM_PROMPT =
     "Preserve any supplied keywords exactly. If no keywords are supplied, return keywords as null.";
 
 let localTranscriber: Promise<any> | undefined;
+let unloadTimer: NodeJS.Timeout | undefined;
+let busy = 0;
+
+/**
+ * The Whisper model needs 1–3 GB of RAM while loaded. Keeping it forever made the idle server
+ * sit on gigabytes that the kernel later pushed into swap. It is now unloaded after
+ * WHISPER_IDLE_MINUTES (default 5) without a transcription; the next one loads it again from the cache.
+ */
+const IDLE_UNLOAD_MS = Math.max(0, Number(process.env.WHISPER_IDLE_MINUTES ?? 5)) * 60_000;
+
+function scheduleUnload() {
+    if (unloadTimer) clearTimeout(unloadTimer);
+    unloadTimer = undefined;
+    if (busy > 0 || !localTranscriber) return;
+    unloadTimer = setTimeout(async () => {
+        unloadTimer = undefined;
+        if (busy > 0 || !localTranscriber) return;
+        const loaded = localTranscriber;
+        localTranscriber = undefined;
+        try {
+            const transcriber = await loaded;
+            await transcriber?.dispose?.();
+            console.info("Whisper model unloaded after idle time");
+        } catch {
+            /* already gone */
+        }
+    }, IDLE_UNLOAD_MS);
+    unloadTimer.unref?.();
+}
 
 export async function getTranscription(blob: Blob): Promise<string> {
     if (env.LOCAL_TRANSCRIPTION_MODEL) {
         console.info("Using local Whisper model for transcription:", env.LOCAL_TRANSCRIPTION_MODEL);
-        // load the model once and keep it in memory (loading takes several seconds)
-        localTranscriber ??= pipeline('automatic-speech-recognition', env.LOCAL_TRANSCRIPTION_MODEL);
-        let transcriber: any;
+        busy++;
+        if (unloadTimer) clearTimeout(unloadTimer);
+        unloadTimer = undefined;
         try {
-            transcriber = await localTranscriber;
-        } catch (e) {
-            localTranscriber = undefined;
-            throw e;
-        }
-        const arrayBuffer = Buffer.from(await blob.arrayBuffer());
-        try {
-            const wav = new WaveFile(new Uint8Array(arrayBuffer));
-            wav.toBitDepth('32f');
-            wav.toSampleRate(16000);
-            let audioData: any = wav.getSamples();
-            const result = await transcriber(audioData);
-
-            if (result && typeof result === 'object' && 'text' in result) {
-                return (result as any).text || "";
+            // loading takes several seconds; the model stays loaded until it has been idle for a while
+            localTranscriber ??= pipeline('automatic-speech-recognition', env.LOCAL_TRANSCRIPTION_MODEL);
+            let transcriber: any;
+            try {
+                transcriber = await localTranscriber;
+            } catch (e) {
+                localTranscriber = undefined;
+                throw e;
             }
-
-            return String(result || "");
-        } catch (err) {
-            console.error('Error transcribing with local Whisper model:', err);
-            throw err;
+            return await transcribeLocally(transcriber, blob);
+        } finally {
+            busy--;
+            scheduleUnload();
         }
     }
 
@@ -115,6 +136,26 @@ export async function getTranscription(blob: Blob): Promise<string> {
         }
         console.error("Error in getTranscription (AI SDK):", error);
         throw new Error("Failed to transcribe audio via API");
+    }
+}
+
+async function transcribeLocally(transcriber: any, blob: Blob): Promise<string> {
+    const arrayBuffer = Buffer.from(await blob.arrayBuffer());
+    try {
+        const wav = new WaveFile(new Uint8Array(arrayBuffer));
+        wav.toBitDepth('32f');
+        wav.toSampleRate(16000);
+        let audioData: any = wav.getSamples();
+        const result = await transcriber(audioData);
+
+        if (result && typeof result === 'object' && 'text' in result) {
+            return (result as any).text || "";
+        }
+
+        return String(result || "");
+    } catch (err) {
+        console.error('Error transcribing with local Whisper model:', err);
+        throw err;
     }
 }
 
